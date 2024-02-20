@@ -48,7 +48,7 @@ static Boolean resetUVTest()
 	return TRUE;
 }
 
-static Boolean itc_sendDefClSignTest(void)
+static Boolean itc_sendDefClSignTest(int num)
 {
 	//Buffers and variables definition
 	unsigned char testBuffer1[10]  = {0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0x40};
@@ -56,7 +56,7 @@ static Boolean itc_sendDefClSignTest(void)
 	unsigned char avalFrames = 0;
 	unsigned int timeoutCounter = 0;
 
-	while(txCounter < 5 && timeoutCounter < 5)
+	while(txCounter < num && timeoutCounter < 5)
 	{
 		printf("\r\n Transmission of single buffers with default callsign. AX25 Format. \r\n");
 		print_error(IsisTrxuv_itcSendAX25DefClSign(0, testBuffer1, 10, &avalFrames));
@@ -299,6 +299,51 @@ static Boolean imc_getAllTelemTest(void)
 	return TRUE;
 }
 
+static Boolean sendCustomAmountAXTest()
+{
+	int amount = 0;
+	printf("\n\r Select number of packets: \n\r");
+	while(UTIL_DbguGetInteger(&amount) == 0);
+	return itc_sendDefClSignTest(amount);
+}
+
+static Boolean sendCustomAXTest()
+{
+	//Buffers and variables definition
+	unsigned char* testBuffer1;
+	int messageLen = 0;
+	unsigned char txCounter = 0;
+	unsigned char avalFrames = 0;
+	unsigned int timeoutCounter = 0;
+
+	printf("\n\r Input packet size: \n\r");
+	while(UTIL_DbguGetIntegerMinMax(&messageLen, 0, 255) == 0);
+	testBuffer1 = malloc(messageLen * sizeof(unsigned char));
+	printf("\n\r Input packet data: \n\r");
+	UTIL_DbguGetString(testBuffer1, messageLen);
+
+
+	while(txCounter < 1 && timeoutCounter < 5)
+	{
+		printf("\r\n Transmission of single buffers with default callsign. AX25 Format. \r\n");
+		print_error(IsisTrxuv_itcSendAX25DefClSign(0, testBuffer1, 10, &avalFrames));
+
+		if ((avalFrames != 0)&&(avalFrames != 255))
+		{
+			printf("\r\n Number of frames in the buffer: %d  \r\n", avalFrames);
+			txCounter++;
+		}
+		else
+		{
+			vTaskDelay(100 / portTICK_RATE_MS);
+			timeoutCounter++;
+		}
+	}
+
+	free(testBuffer1);
+	return TRUE;
+}
+
 static Boolean selectAndExecuteTRXUVDemoTest(void)
 {
 	int selection = 0;
@@ -315,13 +360,15 @@ static Boolean selectAndExecuteTRXUVDemoTest(void)
 	printf("\t 8) Get command frame and retransmit \n\r");
 	printf("\t 9) Get all telemetry \n\r");
 	printf("\t 10) Reset TRXUV both microcontrollers \n\r");
-	printf("\t 11) Return to main menu \n\r");
+	printf("\t 11) Send custom amount of AX.25 packets \n\r");
+	printf("\t 12) Send custom AX.25 packet \n\r");
+	printf("\t 13) Return to main menu \n\r");
 
 	while(UTIL_DbguGetIntegerMinMax(&selection, 1, 11) == 0);
 
 	switch(selection) {
 	case 1:
-		offerMoreTests = itc_sendDefClSignTest();
+		offerMoreTests = itc_sendDefClSignTest(5);
 		break;
 	case 2:
 		offerMoreTests = itc_sendMsgCWTest();
@@ -351,6 +398,12 @@ static Boolean selectAndExecuteTRXUVDemoTest(void)
 		offerMoreTests = resetUVTest();
 		break;
 	case 11:
+		offerMoreTests = sendCustomAmountAXTest();
+		break;
+	case 12:
+		offerMoreTests = sendCustomAXTest();
+		break;
+	case 13:
 		offerMoreTests = FALSE;
 		break;
 
