@@ -8,7 +8,7 @@
 #define EPS_H_
 
 #include "GlobalStandards.h"
-#include "EPSOperationModes.h"
+#include "../../StateMachine.h"
 #include "SubSystemModules/Communication/SatCommandHandler.h"
 #include <stdint.h>
 
@@ -34,30 +34,7 @@
 #define DEFAULT_ALPHA_VALUE 0.3
 
 #define NUMBER_OF_SOLAR_PANELS			6
-#define NUMBER_OF_THRESHOLD_VOLTAGES 	6 		///< first 3 are charging voltages, last 3 are discharging voltages
-#define DEFAULT_EPS_THRESHOLD_VOLTAGES 	{(voltage_t)6500, (voltage_t)7100, (voltage_t)7300,	 \
-										  (voltage_t)6600, (voltage_t)7200, (voltage_t)7400}
 
-typedef enum __attribute__ ((__packed__)){
-	INDEX_DOWN_SAFE,
-	INDEX_DOWN_CRUISE,
-	INDEX_DOWN_FULL,
-	INDEX_UP_SAFE,
-	INDEX_UP_CRUISE,
-	INDEX_UP_FULL
-}EpsThresholdsIndex;
-
-typedef union __attribute__ ((__packed__)){
-	voltage_t raw[NUMBER_OF_THRESHOLD_VOLTAGES];
-	struct {
-		voltage_t Vdown_safe;
-		voltage_t Vdown_cruise;
-		voltage_t Vdown_full;
-		voltage_t Vup_safe;
-		voltage_t Vup_cruise;
-		voltage_t Vup_full;
-	}fields;
-}EpsThreshVolt_t;
 typedef union __attribute__ ((__packed__)){
 struct {
 	int16_t H1_MIN;
@@ -90,25 +67,6 @@ int EPS_Conditioning();
  * 			Error code according to <hal/errors.h>
  */
 int GetBatteryVoltage(voltage_t *vbat);
-
-/*!
- * @brief setting the new EPS logic threshold voltages on the FRAM.
- * @param[in] thresh_volts an array holding the new threshold values
- * @return	0 on success
- * 			-1 on failure setting new threshold voltages
- * 			-2 on invalid thresholds
- * 			ERR according to <hal/errors.h>
- */
-int UpdateThresholdVoltages(EpsThreshVolt_t *thresh_volts);
-
-/*!
- * @brief getting the EPS logic threshold  voltages on the FRAM.
- * @param[out] thresh_volts a buffer to hold the threshold values
- * @return	0 on success
- * 			-1 on NULL input array
- * 			-2 on FRAM read errors
- */
-int GetThresholdVoltages(EpsThreshVolt_t thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES]);
 
 /*!
  * @brief getting the smoothing factor (alpha) from the FRAM.
