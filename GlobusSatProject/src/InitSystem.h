@@ -5,12 +5,28 @@
  * @note	Order of function calls is important. Read system documents for further analysis
  */
 
+#include "FRAM.h"
+#include "FRAM_FlightParameters.h"
+#include "I2C.h"
+#include "SPI.h"
+#include "Time.h"
+#include "EPS.h"
+#include "TRXVU.h"
+#include "GlobalStandards.h"
+#include "TLM_management.h"
+#include <stddef.h>
+
 #ifndef INITSYSTEM_H_
 #define INITSYSTEM_H_
 
 
 #define MIN_2_WAIT_BEFORE_DEPLOY 45 // how many minutes to wait before we open the Ants TODO: before flight change to 30
 #define RESTART_TIME 3 // how much time does it take to restart the SAT
+
+#define BUS_SPEED 10000
+#define BUS_TIMEOUT 10 // all bytes are transformed in 0.1*BUS_TIMEOUT ticks. timeout otherwise.
+
+
 /*!
  * @brief	Starts the FRAM using drivers, and checks for errors.
  * @see FRAM.h
