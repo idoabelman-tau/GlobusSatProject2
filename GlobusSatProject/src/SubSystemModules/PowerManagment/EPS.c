@@ -7,25 +7,18 @@
 #include "EPS.h"
 #include "../../utils.h"
 #include "../../StateMachine.h"
+#include <satellite-subsystems/imepsv2_piu.h>
 
 /* Global variables */
-float curr_alpha;
 voltage_t filtered_voltage;
 
 
-
-/*!
- * @brief initializes the EPS subsystem.
- * @return	0 on success
- * 			-1 on failure of init
- */
 int EPS_Init() {
     // initialize drivers and solar panel
 
-    FRAM_read((unsigned char*) &curr_alpha, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
     filtered_voltage = 0;
 
-    EPS_Conditioning();
+    return EPS_Conditioning();
 
 }
 
@@ -38,65 +31,51 @@ int update_filtered_voltage() {
     return 0;
 }
 
-/*!
- * @brief EPS logic. controls the state machine of which subsystem
- * is on or off, as a function of only the battery voltage
- * @return	0 on success
- * 			-1 on failure setting state of channels
- */
 int EPS_Conditioning() {
     if (update_filtered_voltage() != 0) {
         return -1;
     }
 
+    return ChangeStateByVoltage(filtered_voltage):
 }
 
-/*!
- * @brief returns the current voltage on the battery
- * @param[out] vbat he current battery voltage
- * @return	0 on success
- * 			Error code according to <hal/errors.h>
- */
-int GetBatteryVoltage(voltage_t *vbat);
+int GetBatteryVoltage(voltage_t *vbat) {
 
-/*!
- * @brief setting the new EPS logic threshold voltages on the FRAM.
- * @param[in] thresh_volts an array holding the new threshold values
- * @return	0 on success
- * 			-1 on failure setting new threshold voltages
- * 			-2 on invalid thresholds
- * 			ERR according to <hal/errors.h>
- */
-int UpdateThresholdVoltages(EpsThreshVolt_t *thresh_volts);
+    imepsv2_piu__gethousekeepingeng__from_t response;
 
-/*!
- * @brief getting the EPS logic threshold  voltages on the FRAM.
- * @param[out] thresh_volts a buffer to hold the threshold values
- * @return	0 on success
- * 			-1 on NULL input array
- * 			-2 on FRAM read errors
- */
-int GetThresholdVoltages(EpsThreshVolt_t thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES]);
+    int error = imepsv2_piu__gethousekeepingeng(_index,&response);
+    if (error) {
+        return error;
+    }
 
-/*!
- * @brief getting the smoothing factor (alpha) from the FRAM.
- * @param[out] alpha a buffer to hold the smoothing factor
- * @return	0 on success
- * 			-1 on NULL input array
- * 			-2 on FRAM read errors
- */
-int GetAlpha(float *alpha);
+    *vbat = response.fields.batt_input.fields.volt;
+    return 0;
+}
 
-/*!
- * @brief setting the new voltage smoothing factor (alpha) on the FRAM.
- * @param[in] new_alpha new value for the smoothing factor alpha
- * @note new_alpha is a value in the range - (0,1)
- * @return	0 on success
- * 			-1 on failure setting new smoothing factor
- * 			-2 on invalid alpha
- * @see LPF- Low Pass Filter at wikipedia: https://en.wikipedia.org/wiki/Low-pass_filter#Discrete-time_realization
- */
-int UpdateAlpha(sat_packet_t *cmd);
+int GetAlpha(float *alpha) {
+    if (alpha == NULL) {
+        return -1;
+    }
+
+    int err = FRAM_read((unsigned char*) &alpha, EPS_ALPHA_FILTER_VALUE_ADDR, EPS_ALPHA_FILTER_VALUE_SIZE);
+    if (err != 0) {
+        return -1;
+    }
+    return 0;
+}
+
+int UpdateAlpha(float new_alpha) {
+    if (new_alpha <= 0 || new_alpha > 1) {
+        return -1;
+    }
+
+    int err = FRAM_write((unsigned char*) &new_alpha, EPS_ALPHA_FILTER_VALUE_ADDR, EPS_ALPHA_FILTER_VALUE_SIZE);
+
+    if (err != 0) {
+        return -2;
+    }
+    return 0;
+}
 
 /*!
  * @brief setting the new voltage smoothing factor (alpha) to be the default value.
@@ -104,15 +83,9 @@ int UpdateAlpha(sat_packet_t *cmd);
  * 			-1 on failure setting new smoothing factor
  * @see DEFAULT_ALPHA_VALUE
  */
-int RestoreDefaultAlpha();
-
-/*!
- * @brief	setting the new EPS logic threshold voltages on the FRAM to the default.
- * @return	0 on success
- * 			-1 on failure setting smoothing factor
-  * @see EPS_DEFAULT_THRESHOLD_VOLTAGES
- */
-int RestoreDefaultThresholdVoltages();
+int RestoreDefaultAlpha() {
+    return UpdateAlpha(DEFAULT_ALPHA_VALUE);
+}
 
 int CMDGetHeaterValues(sat_packet_t *cmd);
 

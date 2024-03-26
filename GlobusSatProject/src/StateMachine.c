@@ -4,13 +4,11 @@
 
 /* global variables */
 State_t state;
-EpsThreshVolt_t curr_thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES];
 
 int StateMachine_init() {
     state = Startup;
 
-    FRAM_read((unsigned char*) &curr_thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
-
+    return 0;
 }
 
 int EnterFullMode();
@@ -34,12 +32,19 @@ Boolean EpsGetLowVoltageFlag();
 void EpsSetLowVoltageFlag(Boolean low_volt_flag);
 
 int UpdateThresholdVoltages(EpsThreshVolt_t *thresh_volts) {
-    memcpy(curr_thresh_volts, thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES], sizeof(curr_thresh_volts));
-    FRAM_write((unsigned char*) &curr_thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
+    int error = FRAM_write((unsigned char*) &thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
+    if (error != 0) {
+        return -1;
+    }
+    return 0;
 }
 
 int GetThresholdVoltages(EpsThreshVolt_t thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES]) {
-    memcpy(thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES], curr_thresh_volts, sizeof(curr_thresh_volts));
+    int error = FRAM_read((unsigned char*) &thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
+    if (error != 0) {
+        return -1;
+    }
+    return 0;
 }
 
 int ChangeStateByVoltage(voltage_t voltage) {
