@@ -5,9 +5,15 @@
  * @see		inspect logic flowcharts thoroughly in order to write the code in a clean manner.
  */
 #include "EPS.h"
-#include "../../utils.h"
-#include "../../StateMachine.h"
+#include "utils.h"
+#include "StateMachine.h"
+
+#ifdef TESTING
+#include "EpsStub.h"
+#define imepsv2_piu__gethousekeepingeng imepsv2_piu__gethousekeepingeng_stub
+#else
 #include <satellite-subsystems/imepsv2_piu.h>
+#endif
 
 /* Global variables */
 voltage_t filtered_voltage;
@@ -43,7 +49,8 @@ int GetBatteryVoltage(voltage_t *vbat) {
 
     imepsv2_piu__gethousekeepingeng__from_t response;
 
-    int error = imepsv2_piu__gethousekeepingeng(_index,&response);
+
+    int error = imepsv2_piu__gethousekeepingeng(0,&response);
     if (error) {
         return error;
     }

@@ -8,7 +8,7 @@
 #define EPS_H_
 
 #include "GlobalStandards.h"
-#include "../../StateMachine.h"
+#include "StateMachine.h"
 #include "SubSystemModules/Communication/SatCommandHandler.h"
 #include <stdint.h>
 
@@ -86,7 +86,7 @@ int GetAlpha(float *alpha);
  * 			-2 on invalid alpha
  * @see LPF- Low Pass Filter at wikipedia: https://en.wikipedia.org/wiki/Low-pass_filter#Discrete-time_realization
  */
-int UpdateAlpha(sat_packet_t *cmd);
+int UpdateAlpha(float *alpha);
 
 /*!
  * @brief setting the new voltage smoothing factor (alpha) to be the default value.
@@ -96,17 +96,12 @@ int UpdateAlpha(sat_packet_t *cmd);
  */
 int RestoreDefaultAlpha();
 
-/*!
- * @brief	setting the new EPS logic threshold voltages on the FRAM to the default.
- * @return	0 on success
- * 			-1 on failure setting smoothing factor
-  * @see EPS_DEFAULT_THRESHOLD_VOLTAGES
- */
-int RestoreDefaultThresholdVoltages();
-
 int CMDGetHeaterValues(sat_packet_t *cmd);
 
 int CMDSetHeaterValues(sat_packet_t *cmd);
 
+#ifdef TESTING
+voltage_t filtered_voltage;
+#endif
 
 #endif

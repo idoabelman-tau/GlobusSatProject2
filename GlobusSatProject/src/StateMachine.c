@@ -11,13 +11,25 @@ int StateMachine_init() {
     return 0;
 }
 
-int EnterFullMode();
+int EnterFullMode() {
+    state = FullMode;
+    return 0;
+}
 
-int EnterCruiseMode();
+int EnterCruiseMode() {
+    state = CruiseMode;
+    return 0;
+}
 
-int EnterSafeMode();
+int EnterSafeMode() {
+    state = SafeMode;
+    return 0;
+}
 
-int EnterCriticalMode();
+int EnterCriticalMode() {
+    state = CriticalMode;
+    return 0;
+}
 
 int SetEPS_Channels(channel_t channel);
 
@@ -37,6 +49,11 @@ int UpdateThresholdVoltages(EpsThreshVolt_t *thresh_volts) {
         return -1;
     }
     return 0;
+}
+
+int RestoreDefaultThresholdVoltages() {
+    EpsThreshVolt_t def = DEFAULT_EPS_THRESHOLD_VOLTAGES;
+    return UpdateThresholdVoltages(&def);
 }
 
 int GetThresholdVoltages(EpsThreshVolt_t thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES]) {

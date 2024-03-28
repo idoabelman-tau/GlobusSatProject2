@@ -129,6 +129,15 @@ int UpdateThresholdVoltages(EpsThreshVolt_t *thresh_volts);
  */
 int GetThresholdVoltages(EpsThreshVolt_t thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES]);
 
+
+/*!
+ * @brief	setting the new EPS logic threshold voltages on the FRAM to the default.
+ * @return	0 on success
+ * 			-1 on failure setting smoothing factor
+  * @see EPS_DEFAULT_THRESHOLD_VOLTAGES
+ */
+int RestoreDefaultThresholdVoltages();
+
 /*
  * @brief change the state machine's state based on filtered voltage from the EPS
  * @param voltage input voltage from EPS
