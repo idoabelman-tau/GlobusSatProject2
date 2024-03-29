@@ -109,7 +109,7 @@ int InitSubsystems(){
     StartI2C();
     StartFRAM();
     StartTIME();
-    //initializeFS();
+    InitializeFS();
     startSPI();
     InitTrxvu();
     
