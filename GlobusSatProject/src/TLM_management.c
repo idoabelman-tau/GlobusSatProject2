@@ -2,6 +2,8 @@
 #include "hcc/api_fat.h"
 #include "hcc/api_hcc_mem.h"
 #include "hcc/api_mdriver_atmel_mcipdc.h"
+#include "freertos/FreeRTOSConfig.h"
+#include "freertos/FreeRTOS.h"
 #include <stdbool.h>
 
 #define _SD_CARD 0 // used in demo, might not be correct
@@ -56,8 +58,9 @@ FileSystemResult InitializeFS(){
         return error;
     }
     printf("error %d found while file system volume initialization\n",error);
-    return error;
     openAllFiles();
+    return error;
+
 }
 
 void DeInitializeFS(int sd_card){
@@ -90,6 +93,7 @@ int write2File(void* data, tlm_type_t tlmType){
         case tlm_log:
             c_fileWrite(END_FILENAME_LOGS, data,dataSize);
     }
+    return 0;
 }
 /*
 *@brief: simply open and close a file with name c_file_name
@@ -141,10 +145,10 @@ time_unix getNextTime(FN_FILE* f_handle){
     char longInt[50];
     c= f_getc(f_handle);
     i=0;
-    for(; c != '|' && c != EOF; i++,c= f_getc(f_handle)){
+    for(; c != '|' && !f_eof(f_handle); i++,c= f_getc(f_handle)){
         longInt[i] = c;
     }
-    if(c == EOF){
+    if(f_eof(f_handle)){
         return -1;
     }
     longInt[i] = '\0';
@@ -189,22 +193,22 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
         
     }
     if(startFlag){
-        return;
+        return FS_SUCCSESS;
     }
     else{
-        f_seek(f_handle,startPos,SEEK_SET);
+        f_seek(f_handle,startPos,FN_SEEK_SET);
     }
 
     if(endFlag){
         f_handle_end = NULL;
     }
     else{
-        f_handle_end = f_open(fileName,"r");
+        f_handle_end = f_open(c_file_name,"r");
         if(f_handle_end == NULL){
             printf("failed to delete, file did not open\n");
         }
 
-        f_seek(f_handle_end , endPos , SEEK_SET);
+        f_seek(f_handle_end , endPos , FN_SEEK_SET);
     }
 
     while( f_handle_end != NULL && !f_eof(f_handle_end) ){
@@ -213,7 +217,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
     f_truncate(f_handle->reference,f_tell(f_handle));
     f_close(f_handle);
     f_close(f_handle_end);
-    return;    
+    return FS_SUCCSESS;
 }
 
 int c_fileGetNumOfElements(char* c_file_name,time_unix from_time
@@ -226,7 +230,7 @@ int c_fileGetNumOfElements(char* c_file_name,time_unix from_time
         printf("failed to open file\n");
         return -1;
     }
-    while(!feof(f_handle)){
+    while(!f_eof(f_handle)){
         
         time = getNextTime(f_handle);
 
@@ -235,8 +239,9 @@ int c_fileGetNumOfElements(char* c_file_name,time_unix from_time
         }
 
         GoToNextLine(f_handle);
-    return count;
+
     }
+    return count;
 }
 
 FileSystemResult c_fileRead(char* c_file_name, byte* buffer, int size_of_buffer,
@@ -249,7 +254,7 @@ FileSystemResult c_fileRead(char* c_file_name, byte* buffer, int size_of_buffer,
         time = getNextTime(f_handle);
         if(from_time <= time){
             for(; i <= size_of_buffer-1 && !f_eof(f_handle) ; i++){
-                buffer[i] = fgetc(f_handle);
+                buffer[i] = f_getc(f_handle);
                 if(buffer[i] == '\n'){
                     break;
                 }
@@ -264,8 +269,8 @@ FileSystemResult c_fileRead(char* c_file_name, byte* buffer, int size_of_buffer,
             GoToNextLine(f_handle);
         }
     }
-    while(!feof(f_handle) && time < to_time);  
-    fclose (f_handle);
+    while(!f_eof(f_handle) && time < to_time);
+    f_close (f_handle);
     buffer[i] = '\0';
     return 0;
 }

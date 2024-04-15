@@ -5,13 +5,13 @@
  * @note	Order of function calls is important. Read system documents for further analysis
  */
 
-#include "FRAM.h"
+#include "hal/Storage/FRAM.h"
 #include "FRAM_FlightParameters.h"
-#include "I2C.h"
-#include "SPI.h"
-#include "Time.h"
-#include "EPS.h"
-#include "TRXVU.h"
+#include "hal/Drivers/I2C.h"
+#include "hal/Drivers/SPI.h"
+#include "hal/Timing/Time.h"
+#include "SubSystemModules/PowerManagement/EPS.h"
+#include "SubSystemModules/Communication/TRXVU.h"
 #include "GlobalStandards.h"
 #include "TLM_management.h"
 #include <stddef.h>

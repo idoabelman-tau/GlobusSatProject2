@@ -12,7 +12,7 @@
 #include <GlobalStandards.h>
 #include "SubSystemModules/Housekepping/TelemetryFiles.h"
 #include <hal/Timing/Time.h>
-#include <FreeRTOSConfig.h>
+#include "freertos/FreeRTOSConfig.h"
 #include <time.h>
 #include <string.h>
 #include "SubSystemModules/Communication/SatCommandHandler.h"

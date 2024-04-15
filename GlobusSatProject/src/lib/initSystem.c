@@ -21,7 +21,9 @@ int StartFRAM(){
 *  @return returns 0 if all writes to FRAM were successful, else -1.
 */
 void WriteDefaultValuesToFRAM(){
-    if( 
+
+
+    /*if(
     FRAM_write('0',DEPLOYMENT_TIME_ADDR,DEPLOYMENT_TIME_SIZE)||
 
     FRAM_write('0',SECONDS_SINCE_DEPLOY_ADDR,SECONDS_SINCE_DEPLOY_SIZE)||
@@ -62,16 +64,12 @@ void WriteDefaultValuesToFRAM(){
 
     FRAM_write('0',EPS_THRESH_VOLTAGES_ADDR, (NUMBER_OF_THRESHOLD_VOLTAGES * sizeof(voltage_t))) ||
 
-    FRAM_write('0',EPS_ALPHA_FILTER_VALUE_ADDR,EPS_ALPHA_FILTER_VALUE_SIZE) ||
-
-    FRAM_write('0',BEACON_INTERVAL_TIME_ADDR,BEACON_INTERVAL_TIME_SIZE) ||
+    FRAM_write('0',BEACON_INTERVAL_TIME_ADDR,BEACON_INTERVAL_TIME_SIZE)  ||
     
     FRAM_write('0',LAST_COMM_TIME_ADDR,LAST_COMM_TIME_SIZE)
     ){
         printf("failed writing default values\n");
-        return -1;
-    }
-    return 0;
+    }*/
 }
 
 /*!
@@ -95,10 +93,10 @@ int StartSPI(){
     return 0;
 }
 
-Time timeStruct = {.seconds = '0', .minutes = '0' , .hours = '0', .day = '1', .date='1',.month='1', .year='24'};
+Time timeStruct = {.seconds = 0, .minutes = 0 , .hours = 0, .day = 1, .date=1,.month=1, .year=24, .secondsOfYear=0};
 
 int StartTIME(){
-    if(Time_start(timeStruct,0)){
+    if(Time_start(&timeStruct,0)){
         printf("failed to initialize time");
         return -1;
     }
@@ -110,7 +108,8 @@ int InitSubsystems(){
     StartFRAM();
     StartTIME();
     InitializeFS();
-    startSPI();
-    InitTrxvu();
+    //startSPI();
+    //InitTrxvu();
     
+    return 0;
 }
