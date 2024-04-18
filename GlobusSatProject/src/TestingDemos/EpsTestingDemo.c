@@ -247,7 +247,7 @@ Boolean TestFilterAndConditioning() {
             printf("Conditioning failed\n");
             return FALSE;
         }
-        if (filtered_voltage <= cur_filtered_voltage) {
+        if (filtered_voltage >= cur_filtered_voltage) {
             printf("Conditioning didn't update voltage correctly failed\n");
             return FALSE;
         }
