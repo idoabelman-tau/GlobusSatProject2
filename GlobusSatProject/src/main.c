@@ -42,7 +42,7 @@ void listFiels(){
 			 }
 			 else
 			 {
-				 printf (" size %d\n",find.filesize);
+				 printf ("size %ld\n",find.filesize);
 			 }
 		} while (!f_findnext(&find));
 	}
@@ -90,26 +90,26 @@ void test(){
 			sizeof(tlm_save_period));
 
 	time_unix tlm_save_periods[NUM_OF_SUBSYSTEMS_SAVE_FUNCTIONS] = {0};
-	time_unix tlm_last_save_time[NUM_OF_SUBSYSTEMS_SAVE_FUNCTIONS]= {0};
+	//time_unix tlm_last_save_time[NUM_OF_SUBSYSTEMS_SAVE_FUNCTIONS]= {0};
 
-	time_unix value;
+	time_unix value = 0;
 	FRAM_read((unsigned char*) &tlm_save_periods[tlm_eps], EPS_SAVE_TLM_PERIOD_ADDR, sizeof(time_unix));
-	printf("test value:%d \n",value);
+	printf("test value:%ld \n",value);
 
 	FRAM_read((unsigned char*) &tlm_save_periods[tlm_tx], TRXVU_SAVE_TLM_PERIOD_ADDR, sizeof(time_unix));
-	printf("test value:%d \n",value);
+	printf("test value:%ld \n",value);
 
 	FRAM_read((unsigned char*) &tlm_save_periods[tlm_antenna], ANT_SAVE_TLM_PERIOD_ADDR, sizeof(time_unix));
-	printf("test value:%d \n",value);
+	printf("test value:%ld \n",value);
 
 	FRAM_read((unsigned char*) &tlm_save_periods[tlm_solar], SOLAR_SAVE_TLM_PERIOD_ADDR, sizeof(time_unix));
-	printf("test value:%d \n",value);
+	printf("test value:%ld \n",value);
 
 	FRAM_read((unsigned char*) &tlm_save_periods[tlm_wod], WOD_SAVE_TLM_PERIOD_ADDR, sizeof(time_unix));
-	printf("test value:%d \n",value);
+	printf("test value:%ld \n",value);
 
 
-	printf("test value:%d \n",value);
+	printf("test value:%ld \n",value);
 
 }
 
@@ -140,4 +140,6 @@ int main()
 		xTaskGenericCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
 				configMAX_PRIORITIES - 2, &taskMainHandle, NULL, NULL);
 		vTaskStartScheduler();
+
+		return 0;
 }

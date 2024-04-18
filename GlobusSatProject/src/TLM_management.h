@@ -12,6 +12,7 @@
 #include <GlobalStandards.h>
 #include <time.h>
 #include <string.h>
+#include <stdlib.h>
 #include <hal/Timing/Time.h>
 #include <hal/Boolean.h>
 
@@ -65,7 +66,7 @@ typedef struct imageData
 
 
 
-static Boolean stopDump = FALSE;
+//static Boolean stopDump = FALSE;
 
 int CMD_getInfoImage(sat_packet_t *cmd);
 

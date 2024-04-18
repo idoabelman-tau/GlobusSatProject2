@@ -56,14 +56,22 @@ FileSystemResult InitializeFS(){
         return error;
     }
     printf("error %d found while file system volume initialization\n",error);
-    return error;
     openAllFiles();
+    return error;
 }
 
 void DeInitializeFS(int sd_card){
-
+	return;
 }
+
+int getSize(void* data){
+	//TODO:find size
+	return 1;
+}
+
+
 int write2File(void* data, tlm_type_t tlmType){
+	//TODO: add fail state returns.
     int dataSize = getSize(data);
     switch(tlmType){
         case tlm_eps:
@@ -89,7 +97,11 @@ int write2File(void* data, tlm_type_t tlmType){
             break;
         case tlm_log:
             c_fileWrite(END_FILENAME_LOGS, data,dataSize);
+            break;
+        default:
+        	printf("used TLM not listed\n");
     }
+    return 0;
 }
 /*
 *@brief: simply open and close a file with name c_file_name
@@ -114,7 +126,7 @@ FileSystemResult c_fileCreate(char* c_file_name){
 */
 FileSystemResult c_fileWrite(char* c_file_name, void* element, int size_of_element){
 
-    char* BUf[100];
+    char BUf[100];
     long int time = xTaskGetTickCount() * (1/configTICK_RATE_HZ) * 1000; // time in ms
 
     sprintf(BUf,"%ld|%s\n",time,element); // format:  time "\0" TLM "\n"
@@ -189,7 +201,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
         
     }
     if(startFlag){
-        return;
+        return FS_SUCCSESS ;
     }
     else{
         f_seek(f_handle,startPos,SEEK_SET);
@@ -199,7 +211,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
         f_handle_end = NULL;
     }
     else{
-        f_handle_end = f_open(fileName,"r");
+        f_handle_end = f_open(c_file_name,"r");
         if(f_handle_end == NULL){
             printf("failed to delete, file did not open\n");
         }
@@ -213,7 +225,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
     f_truncate(f_handle->reference,f_tell(f_handle));
     f_close(f_handle);
     f_close(f_handle_end);
-    return;    
+    return FS_SUCCSESS;
 }
 
 int c_fileGetNumOfElements(char* c_file_name,time_unix from_time
@@ -226,7 +238,7 @@ int c_fileGetNumOfElements(char* c_file_name,time_unix from_time
         printf("failed to open file\n");
         return -1;
     }
-    while(!feof(f_handle)){
+    while(!f_eof(f_handle)){
         
         time = getNextTime(f_handle);
 
@@ -235,8 +247,9 @@ int c_fileGetNumOfElements(char* c_file_name,time_unix from_time
         }
 
         GoToNextLine(f_handle);
-    return count;
+
     }
+    return count;
 }
 
 FileSystemResult c_fileRead(char* c_file_name, byte* buffer, int size_of_buffer,
@@ -264,7 +277,7 @@ FileSystemResult c_fileRead(char* c_file_name, byte* buffer, int size_of_buffer,
             GoToNextLine(f_handle);
         }
     }
-    while(!feof(f_handle) && time < to_time);  
+    while(!f_eof(f_handle) && time < to_time);
     fclose (f_handle);
     buffer[i] = '\0';
     return 0;
@@ -272,12 +285,12 @@ FileSystemResult c_fileRead(char* c_file_name, byte* buffer, int size_of_buffer,
 
 void print_file(char* c_file_name){
     F_FILE* f_handle = f_open(c_file_name,"r");
-    char* buf[501]; // say all lines are shorter then 500 chars
+    char buf[501]; // say all lines are shorter then 500 chars
     char c;
     int i ;
     while(!f_eof(f_handle)){
         i=0;
-        for(c = f_getc(f_handle) ; c != '\n' && i < 500; c = f_getc(f_handle)){
+        for(c = f_getc(f_handle) ; c != '\n' && i < 500;  c = f_getc(f_handle)){
             buf[i++] = c;
         }
         buf[i] = '\0';
