@@ -15,7 +15,7 @@ int imepsv2_piu__gethousekeepingeng_stub(uint8_t index, imepsv2_piu__gethousekee
         memcpy(response, &mock_voltage_data, sizeof(mock_voltage_data));
         return 0;
     } else {
-        return imepsv2_piu__gethousekeepingeng(0,response);;
+        return imepsv2_piu__gethousekeepingeng(0,response);
     }
 }
 
