@@ -6,6 +6,10 @@
 State_t state;
 
 int StateMachine_init() {
+	if(RestoreDefaultThresholdVoltages() != 0) {
+		return -1;
+	}
+
     state = Startup;
 
     return 0;
@@ -65,6 +69,11 @@ int GetThresholdVoltages(EpsThreshVolt_t thresh_volts[NUMBER_OF_THRESHOLD_VOLTAG
 }
 
 int ChangeStateByVoltage(voltage_t voltage) {
+	EpsThreshVolt_t curr_thresh_volts;
+	if (GetThresholdVoltages(&curr_thresh_volts) != 0) {
+		return -1;
+	}
+
     switch (GetSystemState()) {
         case CriticalMode:
             if(voltage > curr_thresh_volts.fields.Vup_safe) {
@@ -95,5 +104,6 @@ int ChangeStateByVoltage(voltage_t voltage) {
         default:
             break;
     }
+    return 0;
 }
 
