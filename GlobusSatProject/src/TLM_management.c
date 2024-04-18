@@ -112,7 +112,7 @@ FileSystemResult c_fileCreate(char* c_file_name){
         return FS_TOO_LONG_NAME;
     }
     F_FILE* file;
-    file = f_open(c_file_name,'w');
+    file = f_open(c_file_name,"w");
     if(file == NULL){
         return FS_FAIL;
     }
@@ -129,8 +129,8 @@ FileSystemResult c_fileWrite(char* c_file_name, void* element, int size_of_eleme
     char BUf[100];
     long int time = xTaskGetTickCount() * (1/configTICK_RATE_HZ) * 1000; // time in ms
 
-    sprintf(BUf,"%ld|%s\n",time,element); // format:  time "\0" TLM "\n"
-    F_FILE* file = f_open(c_file_name,'a');
+    sprintf(BUf,"%ld|%s\n",time,(char *)element); // format:  time "\0" TLM "\n"
+    F_FILE* file = f_open(c_file_name,"a");
     if(file != NULL){
 
         if(f_write(BUf,1,50,file)==50){ 
@@ -153,10 +153,10 @@ time_unix getNextTime(FN_FILE* f_handle){
     char longInt[50];
     c= f_getc(f_handle);
     i=0;
-    for(; c != '|' && c != EOF; i++,c= f_getc(f_handle)){
+    for(; c != '|' && !f_eof(f_handle); i++,c= f_getc(f_handle)){
         longInt[i] = c;
     }
-    if(c == EOF){
+    if(f_eof(f_handle)){
         return -1;
     }
     longInt[i] = '\0';
@@ -171,7 +171,7 @@ void GoToNextLine(FN_FILE* f_handle){
 FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, time_unix to_time){
     time_unix time;
 
-    F_FILE* f_handle = f_fopen(c_file_name,"r+");
+    F_FILE* f_handle = f_open(c_file_name,"r+");
     F_FILE* f_handle_end;
 
     unsigned long startPos , endPos;
@@ -180,7 +180,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
         printf("failed to open file\n");
         return -1;
     }
-    while(!f_feof(f_handle)){
+    while(!f_eof(f_handle)){
        
         time = getNextTime(f_handle);
 
@@ -204,7 +204,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
         return FS_SUCCSESS ;
     }
     else{
-        f_seek(f_handle,startPos,SEEK_SET);
+        f_seek(f_handle,startPos,FN_SEEK_SET);
     }
 
     if(endFlag){
@@ -216,7 +216,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
             printf("failed to delete, file did not open\n");
         }
 
-        f_seek(f_handle_end , endPos , SEEK_SET);
+        f_seek(f_handle_end , endPos , FN_SEEK_SET);
     }
 
     while( f_handle_end != NULL && !f_eof(f_handle_end) ){
@@ -262,7 +262,7 @@ FileSystemResult c_fileRead(char* c_file_name, byte* buffer, int size_of_buffer,
         time = getNextTime(f_handle);
         if(from_time <= time){
             for(; i <= size_of_buffer-1 && !f_eof(f_handle) ; i++){
-                buffer[i] = fgetc(f_handle);
+                buffer[i] = f_getc(f_handle);
                 if(buffer[i] == '\n'){
                     break;
                 }
@@ -278,7 +278,7 @@ FileSystemResult c_fileRead(char* c_file_name, byte* buffer, int size_of_buffer,
         }
     }
     while(!f_eof(f_handle) && time < to_time);
-    fclose (f_handle);
+    f_close (f_handle);
     buffer[i] = '\0';
     return 0;
 }
