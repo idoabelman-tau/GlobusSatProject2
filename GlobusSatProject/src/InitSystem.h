@@ -23,7 +23,7 @@
 #define MIN_2_WAIT_BEFORE_DEPLOY 45 // how many minutes to wait before we open the Ants TODO: before flight change to 30
 #define RESTART_TIME 3 // how much time does it take to restart the SAT
 
-#define BUS_SPEED 10000
+#define BUS_SPEED 100000
 #define BUS_TIMEOUT 10 // all bytes are transformed in 0.1*BUS_TIMEOUT ticks. timeout otherwise.
 
 

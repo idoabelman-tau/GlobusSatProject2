@@ -1,5 +1,5 @@
 #include "initSystem.h"
-
+#include "GlobalStandards.h"
  
 
 /*!
@@ -7,8 +7,10 @@
 *  @return Returs 0 upon successful initialization of FRAM, else -1.
 */
 int StartFRAM(){
-    if(FRAM_start()){ // startFRAM return 0 when no error has occurred. otherwise 1;
+	int flag = FRAM_start();
+    if(flag != E_NO_SS_ERR){
        printf("FRAM did not initialize\n");
+       // TODO: log error
        return  -1;
     }
     return 0;
@@ -77,8 +79,10 @@ void WriteDefaultValuesToFRAM(){
 *@return returns 0 upon successful initialization of I2C, else -1.
 */
 int StartI2C(){
-    if(I2C_start(BUS_SPEED,BUS_TIMEOUT)){
+	int flag = I2C_start(BUS_SPEED,BUS_TIMEOUT);
+    if(flag != 0){
         printf("failed to initialize I2C");
+        // TODO: log error
         return -1;
     }
     return 0;
@@ -86,18 +90,21 @@ int StartI2C(){
 
 
 int StartSPI(){
-    if(SPI_start(both_spi, slave1_spi)){ // might want to change the slave in this init. might be ignored anyway.
+	int flag = SPI_start(both_spi, slave1_spi);
+    if(flag != 0){ // might want to change the slave in this init. might be ignored anyway.
         printf("failed to init SPI");
+        // TODO: log error
         return -1;
     } 
     return 0;
 }
 
-Time timeStruct = {.seconds = 0, .minutes = 0 , .hours = 0, .day = 1, .date=1,.month=1, .year=24, .secondsOfYear=0};
-
 int StartTIME(){
-    if(Time_start(&timeStruct,0)){
+	const Time default_time = UNIX_DATE_JAN_D1_Y2000;
+	int flag = Time_start(&default_time,0);
+    if(flag != 0){
         printf("failed to initialize time");
+        // TODO: log error
         return -1;
     }
     return 0;
