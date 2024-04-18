@@ -108,8 +108,10 @@ int InitSubsystems(){
     StartFRAM();
     StartTIME();
     InitializeFS();
-    //startSPI();
-    //InitTrxvu();
+
+    StartSPI();
     
+    EPS_Init();
+    InitTrxvu();
     return 0;
 }

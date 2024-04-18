@@ -10,6 +10,7 @@
 #include "hal/Drivers/I2C.h"
 #include "hal/Drivers/SPI.h"
 #include "hal/Timing/Time.h"
+#include "hal/Timing/WatchDogTimer.h"
 #include "SubSystemModules/PowerManagement/EPS.h"
 #include "SubSystemModules/Communication/TRXVU.h"
 #include "GlobalStandards.h"
