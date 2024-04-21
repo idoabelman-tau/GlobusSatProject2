@@ -64,6 +64,15 @@ int StartTIME(){
 }
 
 int DeploySystem(){
+	//TODO: change ticks to FRAM READ AND UPDATES in address (MACRO) MOST_UPDATED_SAT_TIME_ADDR.
+	vTaskStartScheduler(); //TODO: find where to start scheduler, needed to measure 30 minutes in deploy stage.
+
+	long int initialTicks= xTaskGetTickCount()  ; // configTICK_RATE_HZ ;
+
+	while(xTaskGetTickCount() < initialTicks + 30*60*1000/configTICK_RATE_HZ){//TODO: make sure this waits 30 minutes
+		//TODO: call TLM collector.
+
+	}
 	return 1;
 }
 
@@ -73,6 +82,8 @@ int InitSubsystems(){
     StartTIME();
     InitializeFS();
     EPS_Init();
-    //InitTrxvu();
+    InitTrxvu();
+
+    DeploySystem();
     return 0;
 }

@@ -15,12 +15,32 @@
 #include <satellite-subsystems/imepsv2_piu.h>
 #endif
 
-/* Global variables */
+#define EPS_I2C_ADDRESS 0x20 //TODO: make sure this address (in demo) is hard coded in eps
+
+/* Global variables*/
 voltage_t filtered_voltage;
 
 
 int EPS_Init() {
+
     // initialize drivers and solar panel
+	int SPI_ERR_FLAG = StartSPI();
+	int EPS_ERR_FLAG;
+	if(SPI_ERR_FLAG != E_NO_SS_ERR){
+		//TODO: add error log
+		return SPI_ERR_FLAG;
+	}
+
+	IMEPSV2_PIU_t EPS_INIT_STRUCT;
+	EPS_INIT_STRUCT.i2cAddr = EPS_I2C_ADDRESS;
+	EPS_ERR_FLAG = IMEPSV2_PIU_Init(&EPS_INIT_STRUCT, 1);
+
+	if( EPS_ERR_FLAG == driver_error_reinit || EPS_ERR_FLAG != driver_error_none)
+	// re-initialization is not an error
+	{
+		//TODO: add error log
+		return EPS_ERR_FLAG;
+	}
 
 	if(RestoreDefaultAlpha() != 0) {
 		return -1;

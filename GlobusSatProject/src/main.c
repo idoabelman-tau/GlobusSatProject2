@@ -136,10 +136,9 @@ int main()
 		// The actual watchdog is already started, this only initializes the watchdog-kick interface.
 		WDT_start();
 
-		// create the main operation task of the satellite
+		// create the main operation task of the satellits
 		xTaskGenericCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
 				configMAX_PRIORITIES - 2, &taskMainHandle, NULL, NULL);
 		vTaskStartScheduler();
 
-		return 0;
 }

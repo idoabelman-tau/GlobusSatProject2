@@ -42,20 +42,20 @@ FileSystemResult InitializeFS(){
     }
     error = f_enterFS();
     if(error){
-        printf("error %d found during file system enter\n",error);
+        //printf("error %d found during file system enter\n",error);
         return error;
     }
 
     error = f_initvolume(0, atmel_mcipdc_initfunc , _SD_CARD);
     
     if(error == F_ERR_NOTFORMATTED){
-        printf("format error %d found while file system volume initialization\n",error);
+       //printf("format error %d found while file system volume initialization\n",error);
         return error;
     }
     else if(error != F_NO_ERROR){
         return error;
     }
-    printf("error %d found while file system volume initialization\n",error);
+   //printf("error %d found while file system volume initialization\n",error);
     openAllFiles();
     return error;
 }
@@ -99,7 +99,8 @@ int write2File(void* data, tlm_type_t tlmType){
             c_fileWrite(END_FILENAME_LOGS, data,dataSize);
             break;
         default:
-        	printf("used TLM not listed\n");
+        	dataSize = 0;
+        	//printf("used TLM not listed\n");
     }
     return 0;
 }
@@ -129,7 +130,7 @@ FileSystemResult c_fileWrite(char* c_file_name, void* element, int size_of_eleme
     char BUf[100];
     long int time = xTaskGetTickCount() * (1/configTICK_RATE_HZ) * 1000; // time in ms
 
-    sprintf(BUf,"%ld|%s\n",time,(char *)element); // format:  time "\0" TLM "\n"
+    //sprintf(BUf,"%ld|%s\n",time,(char *)element); // format:  time "\0" TLM "\n"
     F_FILE* file = f_open(c_file_name,"a");
     if(file != NULL){
 
@@ -177,7 +178,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
     unsigned long startPos , endPos;
     bool startFlag = true, endFlag = true; 
     if(f_handle == NULL){
-        printf("failed to open file\n");
+        //printf("failed to open file\n");
         return -1;
     }
     while(!f_eof(f_handle)){
@@ -213,7 +214,7 @@ FileSystemResult c_fileDeleteElements(char* c_file_name, time_unix from_time, ti
     else{
         f_handle_end = f_open(c_file_name,"r");
         if(f_handle_end == NULL){
-            printf("failed to delete, file did not open\n");
+            //printf("failed to delete, file did not open\n");
         }
 
         f_seek(f_handle_end , endPos , FN_SEEK_SET);
@@ -235,7 +236,7 @@ int c_fileGetNumOfElements(char* c_file_name,time_unix from_time
     int count = 0;
     F_FILE* f_handle = f_open(c_file_name,"r");
     if(f_handle == NULL){
-        printf("failed to open file\n");
+        //printf("failed to open file\n");
         return -1;
     }
     while(!f_eof(f_handle)){
@@ -294,6 +295,6 @@ void print_file(char* c_file_name){
             buf[i++] = c;
         }
         buf[i] = '\0';
-        printf("%s\n",buf);
+        //printf("%s\n",buf);
     }
 }

@@ -2,6 +2,7 @@
 #define MAIN_H_
 
 
+
 /*!
  * @brief checks if communication with the ground station was made in the last 'NO_COMMUNICATION_WDT_KICK_TIME' seconds
  * @return	TRUE if WDT was kicked and restart is needed
