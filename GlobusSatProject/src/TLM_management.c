@@ -20,6 +20,7 @@ void openAllFiles(){
 
 }
 void delete_allTMFilesFromSD(){
+	int i;
     f_delete(END_FILENAME_EPS_TLM);
     f_delete(END_FILE_NAME_TX);
     f_delete(END_FILE_NAME_ANTENNA);

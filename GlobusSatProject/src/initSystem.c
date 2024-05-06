@@ -80,7 +80,7 @@ int InitSubsystems(){
     StartI2C();
     StartFRAM();
     StartTIME();
-    InitializeFS();
+    //InitializeFS();
     EPS_Init();
     InitTrxvu();
 

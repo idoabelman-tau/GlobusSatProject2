@@ -140,5 +140,6 @@ int main()
 		xTaskGenericCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
 				configMAX_PRIORITIES - 2, &taskMainHandle, NULL, NULL);
 		vTaskStartScheduler();
+		exit(0);
 
 }
