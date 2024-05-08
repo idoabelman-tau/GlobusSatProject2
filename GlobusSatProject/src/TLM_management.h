@@ -28,7 +28,7 @@
 
 #include <freertos/FreeRTOSConfig.h>
 
-#include "SubSystemModules/Housekepping/TelemetryFiles.h"
+#include "SubSystemModules/Housekeeping/TelemetryFiles.h"
 
 #include "SubSystemModules/Communication/SatCommandHandler.h"
 #include "SubSystemModules/Communication/TRXVU.h"

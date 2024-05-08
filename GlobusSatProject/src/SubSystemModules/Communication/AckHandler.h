@@ -6,7 +6,7 @@
 #include "SPL.h"
 
 
-#define SendAnonymosAck(acksubtype) SendAckPacket(acksubtype,NULL,NULL,0) //<! sends an ACK without command ID nor data
+#define SendAnonymousAck(acksubtype) SendAckPacket(acksubtype,NULL,NULL,0) //<! sends an ACK without command ID nor data
 
 
 /*!

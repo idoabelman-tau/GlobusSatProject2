@@ -17,7 +17,7 @@
 
 
 typedef enum __attribute__ ((__packed__)) CMD_ERR{
-	command_succsess = 0,				///< a successful operation. no errors
+	command_success = 0,				///< a successful operation. no errors
 	command_found = 0,					///< a command was found
 	no_command_found ,					///< no commands were found in command buffers
 	index_out_of_bound,					///< index out of bound error
@@ -37,16 +37,16 @@ typedef struct __attribute__ ((__packed__)) sat_packet_t
 }sat_packet_t;
 
 /*!
- * @brief parses given frame from TRXVU into 'sat_command_t' structure.
+ * @brief parses given frame from TRXVU into 'sat_packet_t' structure.
  * @param[in] data raw data from which to parse the SPL packet
  * @param[in] data_length length of data packet in bytes
  * @param[out] cmd pointer to parsed command buffer
  * @return	errors according to CMD_ERR
  */
-int ParseDataToCommand(unsigned char * data, sat_packet_t *cmd);
+int ParseDataToSPLPacket(unsigned char * data, sat_packet_t *cmd);
 
 /*!
- * @brief parses given frame from TRXVU into 'sat_command_t' SPL structure.
+ * @brief builds 'sat_packet_t' SPL structure based on fields.
  * @param[in] data data field of the SPL packet
  * @param[in] data_length length of data packet in bytes
  * @param[in] type command type
@@ -55,7 +55,7 @@ int ParseDataToCommand(unsigned char * data, sat_packet_t *cmd);
  * @param[out] cmd pointer to parsed command buffer
  * @return	errors according to CMD_ERR
  */
-int AssembleCommand(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id, sat_packet_t *cmd);
+int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id, sat_packet_t *cmd);
 
 /*!
  * @brief returns a command to be executed if there is one in the delayed command buffer

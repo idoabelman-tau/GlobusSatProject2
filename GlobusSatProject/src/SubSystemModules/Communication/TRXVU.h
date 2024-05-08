@@ -72,7 +72,9 @@ int InitTrxvu();
 
 void checkTransponderFinish();
 
-int CMD_SetBeaconInterval(sat_packet_t *cmd);
+int GetBeaconInterval(unsigned int *interval);
+
+int SetBeaconInterval(unsigned int *interval);
 
 /*!
  * @brief The TRXVU logic according to the sub-system flowchart
@@ -107,7 +109,7 @@ Boolean CheckTransmitionAllowed();
  * @param[out] avalFrames Number of the available slots in the transmission buffer of the VU_TC after the frame has been added. Set NULL to skip available slot count read-back.
  * @return    Error code according to <hal/errors.h>
  */
-int TransmitSplPacket(sat_packet_t *packet, int *avalFrames);
+int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames);
 
 /*!
  * @brief sends an abort message via a freeRTOS queue.
@@ -124,9 +126,16 @@ void FinishDump(sat_packet_t *cmd,unsigned char *buffer, ack_subtype_t acktype,
 		unsigned char *err, unsigned int size) ;
 
 /*!
- * @brief transmits beacon according to beacon logic
+ * @brief transmits beacon if needed according to beacon logic
+ * @return 0 if successful, -1 in failure
  */
-int BeaconLogic(Boolean forceTX);
+int BeaconLogic();
+
+/*!
+ * @brief transmits beacon
+ * @return 0 if successful, -1 in failure
+ */
+int SendBeacon();
 
 /*
  * @brief set the idle state of the trxvu
