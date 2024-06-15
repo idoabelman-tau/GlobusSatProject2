@@ -92,7 +92,7 @@ int GetAlpha(float *alpha) {
         return -1;
     }
 
-    int err = FRAM_read((unsigned char*) &alpha, EPS_ALPHA_FILTER_VALUE_ADDR, EPS_ALPHA_FILTER_VALUE_SIZE);
+    int err = FRAM_read((unsigned char*) alpha, EPS_ALPHA_FILTER_VALUE_ADDR, EPS_ALPHA_FILTER_VALUE_SIZE);
     if (err != 0) {
         return -1;
     }

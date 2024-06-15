@@ -14,7 +14,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to get alpha value \n");
         return FALSE;
     } else {
-        printf("Initial alpha: %f", initial_alpha);
+        printf("Initial alpha: %f \n", initial_alpha);
     }
 
     printf("Updating alpha value \n");
@@ -22,7 +22,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to update alpha value \n");
         return FALSE;
     } else {
-        printf("Updated alpha to 0.1");
+        printf("Updated alpha to 0.1 \n");
     }
 
     printf("Getting updated alpha value \n");
@@ -31,7 +31,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to get alpha value \n");
         return FALSE;
     } else {
-        printf("Updated alpha: %f", updated_alpha);
+        printf("Updated alpha: %f \n", updated_alpha);
         if (fabs(updated_alpha - 0.1) > EPSILON) {
             printf("Updated alpha is incorrect\n");
             return FALSE;
@@ -43,7 +43,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to restore default alpha value \n");
         return FALSE;
     } else {
-        printf("Restored default value alpha\n");
+        printf("Restored default value alpha \n");
     }
 
     printf("Getting updated alpha value \n");
@@ -51,7 +51,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to get alpha value \n");
         return FALSE;
     } else {
-        printf("Updated alpha: %f", updated_alpha);
+        printf("Updated alpha: %f \n", updated_alpha);
         if (fabs(updated_alpha - DEFAULT_ALPHA_VALUE) > EPSILON) {
             printf("Updated alpha is incorrect\n");
             return FALSE;
@@ -95,7 +95,7 @@ Boolean TestThresholdChanges() {
         printf("Failed to update threshold values \n");
         return FALSE;
     } else {
-        printf("Updated thresholds");
+        printf("Updated thresholds \n");
     }
 
     printf("Getting updated threshold values \n");
@@ -112,7 +112,7 @@ Boolean TestThresholdChanges() {
     }
 
     printf("Restoring default threshold values \n");
-    if (RestoreDefaultAlpha() != 0) {
+    if (RestoreDefaultThresholdVoltages() != 0) {
         printf("Failed to restore default threshold values \n");
         return FALSE;
     } else {
@@ -225,8 +225,8 @@ Boolean TestStateChanges() {
 Boolean TestFilterAndConditioning() {
     SetVoltage(8000);
     voltage_t cur_filtered_voltage = filtered_voltage;
-    printf("filtered voltage: %d", cur_filtered_voltage);
-    printf("state: %d", GetSystemState());
+    printf("filtered voltage: %d \n", cur_filtered_voltage);
+    printf("state: %d \n", GetSystemState());
     for (int i = 0; i < 10; ++i) {
         if (EPS_Conditioning() != 0) {
             printf("Conditioning failed\n");
@@ -237,8 +237,8 @@ Boolean TestFilterAndConditioning() {
             return FALSE;
         }
         cur_filtered_voltage = filtered_voltage;
-        printf("filtered voltage: %d", cur_filtered_voltage);
-        printf("state: %d", GetSystemState());
+        printf("filtered voltage: %d \n", cur_filtered_voltage);
+        printf("state: %d \n", GetSystemState());
     }
 
     SetVoltage(1000);
@@ -252,8 +252,8 @@ Boolean TestFilterAndConditioning() {
             return FALSE;
         }
         cur_filtered_voltage = filtered_voltage;
-        printf("filtered voltage: %d", cur_filtered_voltage);
-        printf("state: %d", GetSystemState());
+        printf("filtered voltage: %d \n", cur_filtered_voltage);
+        printf("state: %d \n", GetSystemState());
     }
     return TRUE;
 }
