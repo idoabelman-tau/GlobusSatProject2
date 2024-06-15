@@ -4,8 +4,6 @@
 #include <stdio.h>
 
 int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id, sat_packet_t *cmd) {
-	cmd = malloc(sizeof(sat_packet_t));
-
 	if (cmd == NULL) {
 		return execution_error;
 	}
@@ -19,8 +17,6 @@ int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type
 }
 
 int ParseDataToSPLPacket(unsigned char * data, sat_packet_t *cmd) {
-	cmd = malloc(sizeof(sat_packet_t));
-
 	if (cmd == NULL) {
 		return execution_error;
 	}

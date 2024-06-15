@@ -20,7 +20,7 @@ int InitTrxvu(){
 	TRX_FRAME_LENGTH_STRUCT.maxAX25frameLengthTX = SIZE_TXFRAME;
 	TRX_FRAME_LENGTH_STRUCT.maxAX25frameLengthRX = SIZE_RXFRAME;
 
-	TRX_BIT_RATE_STRUCT = trxvu_bitrate_1200;  //TODO: set correct bit
+	TRX_BIT_RATE_STRUCT = trxvu_bitrate_9600;  //TODO: set correct bit
 
 	// initialize
 	TRX_ERR_FLAG = IsisTrxvu_initialize(&TRX_I2C_ADDR_STRUCT,&TRX_FRAME_LENGTH_STRUCT,&TRX_BIT_RATE_STRUCT,1);
@@ -56,7 +56,7 @@ int TRX_Logic() {
 
 int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 	unsigned char packet_length = sizeof(sat_packet_t) - sizeof(packet->data) + packet->length; // only submit the actual data
-	int err = IsisTrxvu_tcSendAX25DefClSign(TRANSMITTER_I2C_ADDRESS, (unsigned char *)packet, packet_length, (unsigned char *)&avalFrames);
+	int err = IsisTrxvu_tcSendAX25DefClSign(0, (unsigned char *)packet, packet_length, (unsigned char *)avalFrames);
 
 	if(err != E_NO_SS_ERR){
 		printf("error sending packet\n");
@@ -80,6 +80,7 @@ int BeaconLogic() {
 	unsigned int cur_time = Time_getUptimeSeconds();
 
 	if (cur_time - last_sent_time >= interval) { // more than interval seconds have passed since the last time the beacon was sent, send a new one
+		printf("interval has passed, sending beacon\n");
 		last_sent_time = Time_getUptimeSeconds();
 		return SendBeacon();
 	}
@@ -158,7 +159,7 @@ int GetBeaconInterval(unsigned int *interval) {
 }
 
 int SetBeaconInterval(unsigned int *interval) {
-    if (*interval <= MIN_BEACON_INTERVAL || *interval > MAX_BEACON_INTERVAL) {
+    if (*interval < MIN_BEACON_INTERVAL || *interval > MAX_BEACON_INTERVAL) {
         return -1;
     }
 

@@ -21,7 +21,7 @@ int PrintPacket(sat_packet_t *cmd) {
 }
 
 Boolean TestSendBeacon() {
-	printf("testing sending beacon");
+	printf("testing sending beacon\n");
 	return SendBeacon() == 0;
 }
 
@@ -32,10 +32,10 @@ Boolean TestBeaconLogic() {
 		printf("Failed to update beacon delay \n");
 		return FALSE;
 	} else {
-		printf("Updated beacon delay to 10 seconds");
+		printf("Updated beacon delay to 10 seconds\n");
 	}
 
-	printf("Sleeping 10s");
+	printf("Sleeping 10s\n");
 	vTaskDelay(10000 / portTICK_RATE_MS);
 	printf("testing beacon logic\n");
 
@@ -43,7 +43,7 @@ Boolean TestBeaconLogic() {
 	if (err != 0) {
 		printf("Beacon logic failed\n");
 	} else {
-		printf("Beacon logic succeeded, should see a beacon");
+		printf("Beacon logic succeeded, should see a beacon \n");
 	}
 
 	printf("testing beacon logic with no delay\n");
@@ -52,10 +52,10 @@ Boolean TestBeaconLogic() {
 		printf("Beacon logic failed\n");
 		return FALSE;
 	} else {
-		printf("Beacon logic succeeded, should not see another beacon");
+		printf("Beacon logic succeeded, should not see another beacon \n");
 	}
 
-	printf("Sleeping 10s");
+	printf("Sleeping 10s\n");
 	vTaskDelay(10000 / portTICK_RATE_MS);
 	printf("testing beacon logic with delay\n");
 
@@ -64,17 +64,17 @@ Boolean TestBeaconLogic() {
 		printf("Beacon logic failed\n");
 		return FALSE;
 	} else {
-		printf("Beacon logic succeeded, should see a beacon");
+		printf("Beacon logic succeeded, should see a beacon \n");
 	}
 
 	return TRUE;
 }
 
 Boolean TestGetOnlineCommand() {
-	sat_packet_t *cmd;
+	sat_packet_t cmd = {0};
 
 	printf("Testing getting command with none available\n");
-	int err = GetOnlineCommand(cmd);
+	int err = GetOnlineCommand(&cmd);
 	if (err != no_command_found) {
 		printf("GetOnlineCommand failed or got unexpected result: %d\n", err);
 		return FALSE;
@@ -86,7 +86,7 @@ Boolean TestGetOnlineCommand() {
 	printf("Send command with ID not equal %d and input any number\n", YCUBE_SAT_ID);
 	int readval;
 	UTIL_DbguGetInteger(&readval);
-	err = GetOnlineCommand(cmd);
+	err = GetOnlineCommand(&cmd);
 	if (err != no_command_found) {
 		printf("GetOnlineCommand failed or got unexpected result: %d\n", err);
 		return FALSE;
@@ -97,12 +97,13 @@ Boolean TestGetOnlineCommand() {
 	printf("Testing getting command with one meant for us available\n");
 	printf("Send command with ID equal %d and input any number\n", YCUBE_SAT_ID);
 	UTIL_DbguGetInteger(&readval);
-	err = GetOnlineCommand(cmd);
-	if (err != no_command_found) {
+	err = GetOnlineCommand(&cmd);
+	if (err != command_found) {
 		printf("GetOnlineCommand failed or got unexpected result: %d\n", err);
 		return FALSE;
 	} else {
-		printf("GetOnlineCommand found no command as expected\n");
+		printf("GetOnlineCommand found command as expected\n");
+		PrintPacket(&cmd);
 	}
 
 	return TRUE;
