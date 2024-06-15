@@ -1,6 +1,7 @@
 #include "SatCommandHandler.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id, sat_packet_t *cmd) {
 	cmd = malloc(sizeof(sat_packet_t));
@@ -31,4 +32,14 @@ int ParseDataToSPLPacket(unsigned char * data, sat_packet_t *cmd) {
 	}
 
 	return AssembleSPLPacket(data_as_cmd->data, data_as_cmd->length, data_as_cmd->cmd_type, data_as_cmd->cmd_subtype, data_as_cmd->ID, cmd);
+}
+
+int ActUponCommand(sat_packet_t *cmd) {
+	// dummy debug code for now
+	printf("ActUponCommand called\n");
+	printf("ID: %d", cmd->ID);
+	printf("Command type: %d", (int)cmd->cmd_type);
+	printf("Command subtype: %d", (int)cmd->cmd_subtype);
+	printf("Command data length: %d", cmd->length);
+	return 0;
 }

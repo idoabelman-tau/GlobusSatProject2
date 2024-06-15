@@ -56,7 +56,7 @@ int TRX_Logic() {
 
 int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 	unsigned char packet_length = sizeof(sat_packet_t) - sizeof(packet->data) + packet->length; // only submit the actual data
-	int err = IsisTrxvu_tcSendAX25DefClSign(TRANSMITTER_I2C_ADDRESS, (unsigned char *)packet, packet_length, &avalFrames);
+	int err = IsisTrxvu_tcSendAX25DefClSign(TRANSMITTER_I2C_ADDRESS, (unsigned char *)packet, packet_length, (unsigned char *)&avalFrames);
 
 	if(err != E_NO_SS_ERR){
 		printf("error sending packet\n");
@@ -129,7 +129,7 @@ int GetOnlineCommand(sat_packet_t *cmd) {
 			return execution_error;
 		}
 
-		err = ParseDataToSPLPacket(&(rxFrameCmd.rx_framedata), cmd);
+		err = ParseDataToSPLPacket(rxFrameCmd.rx_framedata, cmd);
 		if (err == command_success && (cmd->ID == YCUBE_SAT_ID || cmd->ID == ALL_SAT_ID)) {
 			return command_found;
 		}
@@ -143,4 +143,33 @@ int GetOnlineCommand(sat_packet_t *cmd) {
 	}
 
 	return no_command_found;
+}
+
+int GetBeaconInterval(unsigned int *interval) {
+    if (interval == NULL) {
+        return -1;
+    }
+
+    int err = FRAM_read((unsigned char*) &interval, BEACON_INTERVAL_TIME_ADDR, BEACON_INTERVAL_TIME_SIZE);
+    if (err != 0) {
+        return -1;
+    }
+    return 0;
+}
+
+int SetBeaconInterval(unsigned int *interval) {
+    if (*interval <= MIN_BEACON_INTERVAL || *interval > MAX_BEACON_INTERVAL) {
+        return -1;
+    }
+
+    int err = FRAM_write((unsigned char*) interval, BEACON_INTERVAL_TIME_ADDR, BEACON_INTERVAL_TIME_SIZE);
+
+    if (err != 0) {
+        return -2;
+    }
+    return 0;
+}
+
+int RestoreDefaultBeaconInterval() {
+    return UpdateAlpha(DEFAULT_BEACON_INTERVAL_TIME);
 }

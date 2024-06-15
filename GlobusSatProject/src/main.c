@@ -24,6 +24,7 @@
 #include "InitSystem.h"
 #include "main.h"
 
+#include "TestingDemos/MainTest.h"
 
 void listFiels(){
 
@@ -110,6 +111,8 @@ void test(){
 
 
 	printf("test value:%ld \n",value);
+
+	taskTesting();
 
 }
 
