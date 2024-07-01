@@ -188,11 +188,22 @@ int GetOnlineCommand(sat_packet_t *cmd);
 
 /*!
  * @brief transmits data as SPL packet
- * @param[in] cmd the given command.
- * @param[in] data the outout data.
- * @param[in] length number of bytes in 'data' fields.
- * @return errors according to <hal/errors.h>
+ * @param[in] data the output data.
+ * @param[in] data_length number of bytes in 'data' field.
+ * @param[in] type the SPL "type" field to be used
+ * @param[in] subtype the SPL "subtype" field to be used
+ * @param[in] id the ID field
+ * @return 0 on success, -1 on error
  */
-int TransmitDataAsSPL_Packet(sat_packet_t *cmd, unsigned char *data, unsigned short length);
+int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id);
+
+/*!
+ * @brief transmits an ack packet as an SPL packet(using the SPL protocol)
+ * @param[in] acksubtype type of ack to be sent according to acl_subtype_t enumeration
+ * @param[in] cmd the command for which the ACK is a response to. CAN BE NULL COMMAND FOR SYSTEM ACK!
+ * @note the ACK is sent with the corresponding ID of the ACK inside the SPL packet
+ * @return 0 on success, -1 on error
+ */
+int SendAckPacket(ack_subtype_t acksubtype, sat_packet_t *cmd, unsigned char *data, unsigned short length);
 
 #endif

@@ -109,12 +109,71 @@ Boolean TestGetOnlineCommand() {
 	return TRUE;
 }
 
+Boolean TestTrxLogic() {
+	printf("Testing full TRX logic\n");
+	printf("Send command and input any number\n", YCUBE_SAT_ID);
+	int err = TRX_Logic();
+	if (err != 0) {
+		printf("Error in TRX_Logic");
+	}
+}
+
+Boolean selectAndExecuteTRXVUTest() {
+	int selection = 0;
+
+		printf( "\n\r Select the test to perform: \n\r");
+		printf("\t 1) Send beacon \n\r");
+		printf("\t 2) Beacon logic \n\r");
+		printf("\t 3) Get online command \n\r");
+		printf("\t 4) Full TRX logic \n\r");
+		printf("\t 5) Go back \n\r");
+
+		while(UTIL_DbguGetIntegerMinMax(&selection, 1, 2) == 0);
+
+		switch(selection)
+		{
+			case 1:
+				if(!TestSendBeacon()) {
+					printf("TestSendBeacon failed");
+				}
+				break;
+			case 2:
+				if(!TestBeaconLogic()) {
+					printf("TestBeaconLogic failed");
+				}
+				break;
+			case 3:
+				if(!TestGetOnlineCommand()) {
+					printf("TestGetOnlineCommand failed");
+				}
+				break;
+			case 4:
+				if(!TestTrxLogic()) {
+					printf("TestTrxLogic failed");
+				}
+				break;
+
+			case 5:
+				return FALSE;
+
+			default:
+				break;
+		}
+
+	    return TRUE;
+}
+
 Boolean MainTrxvuTestBench() {
-    Boolean send_beacon_success = TestSendBeacon();
-    Boolean beacon_logic_success = TestBeaconLogic();
-    Boolean online_command_success = TestGetOnlineCommand();
-    printf("TestSendBeacon: %s\n", send_beacon_success ? "SUCCESS" : "FAIL");
-    printf("TestBeaconLogic: %s\n", beacon_logic_success ? "SUCCESS" : "FAIL");
-    printf("TestGetOnlineCommand: %s\n", online_command_success ? "SUCCESS" : "FAIL");
-    return TRUE;
+
+	Boolean offerMoreTests = FALSE;
+
+	while(1)
+	{
+		offerMoreTests = selectAndExecuteTRXUVDemoTest();
+
+		if(offerMoreTests == FALSE)
+		{
+			break;
+		}
+	}
 }

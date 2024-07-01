@@ -12,7 +12,12 @@ int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type
 	cmd->cmd_type = type;
 	cmd->cmd_subtype = subtype;
 	cmd->length = data_length;
-	memcpy(&cmd->data, data, data_length);
+	if (data_length > 0) {
+		if (data == NULL) {
+			return execution_error;
+		}
+		memcpy(&cmd->data, data, data_length);
+	}
 	return command_success;
 }
 
@@ -37,5 +42,11 @@ int ActUponCommand(sat_packet_t *cmd) {
 	printf("Command type: %d", (int)cmd->cmd_type);
 	printf("Command subtype: %d", (int)cmd->cmd_subtype);
 	printf("Command data length: %d", cmd->length);
+
+	SendAckPacket(ACK_COMD_EXEC, &cmd, NULL, 0);
 	return 0;
+}
+
+int GetSatId(sat_packet_t *packet) {
+	return (packet->ID && 0xFF); // get the LSB
 }

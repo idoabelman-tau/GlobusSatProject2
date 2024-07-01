@@ -47,15 +47,15 @@ int ParseDataToSPLPacket(unsigned char * data, sat_packet_t *cmd);
 
 /*!
  * @brief builds 'sat_packet_t' SPL structure based on fields.
- * @param[in] data data field of the SPL packet
+ * @param[in] data data field of the SPL packet. Can be NULL if data_length is 0 representing empty data
  * @param[in] data_length length of data packet in bytes
  * @param[in] type command type
  * @param[in] subtype command subtype
  * @param[in] id the id of the specific command
- * @param[out] cmd pointer to parsed command buffer
+ * @param[out] packet pointer to struct buffer to be built
  * @return	errors according to CMD_ERR
  */
-int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id, sat_packet_t *cmd);
+int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id, sat_packet_t *packet);
 
 /*!
  * @brief returns a command to be executed if there is one in the delayed command buffer
@@ -86,5 +86,12 @@ int DeleteDelayedCommandByIndex(unsigned int index);
 int DeleteDelayedBuffer();
 
 int ActUponCommand(sat_packet_t *cmd);
+
+/*!
+ * @brief get the satellite ID from the SPL packet
+ * @param[in] packet - packet to get the satellite ID from
+ * @return	satellite ID
+ */
+int GetSatId(sat_packet_t *packet);
 
 #endif /* SATCOMMANDS_H_ */

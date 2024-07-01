@@ -42,6 +42,7 @@ int TRX_Logic() {
 	}*/ // delayed commands not currently implemented
 
 	if (err == command_found) { // a command was found either in online or delayed buffer
+		SendAckPacket(ACK_RECEIVE_COMM, &cmd, NULL, 0);
 		err = ActUponCommand(&cmd);
 	}
 	else if (err != no_command_found) {
@@ -65,6 +66,22 @@ int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 	}
 
 	return err;
+}
+
+int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id) {
+	sat_packet_t packet;
+	int err = AssembleSPLPacket(data, data_length, type, subtype, id, &packet);
+	if (err != command_success) {
+		// TODO: log error
+		return -1;
+	}
+
+	err = TransmitSPLPacket(&packet, NULL);
+	if (err != E_NO_SS_ERR) {
+		// TODO: log error
+		return -1;
+	}
+	return 0;
 }
 
 int BeaconLogic() {
@@ -93,16 +110,8 @@ int SendBeacon() {
 	WOD_Telemetry_t wod;
 	GetCurrentWODTelemetry(&wod);
 
-	sat_packet_t beacon;
-
-	int err = AssembleSPLPacket((unsigned char *)&wod, sizeof(wod), trxvu_cmd_type, BEACON_SUBTYPE, YCUBE_SAT_ID, &beacon);
-	if (err != command_success) {
-		// TODO: log error
-		return -1;
-	}
-
-	err = TransmitSPLPacket(&beacon, NULL);
-	if (err != E_NO_SS_ERR) {
+	int err = AssembleAndSendPacket((unsigned char *)&wod, sizeof(wod), trxvu_cmd_type, BEACON_SUBTYPE, YCUBE_SAT_ID);
+	if (err != 0) {
 		// TODO: log error
 		return -1;
 	}
@@ -131,7 +140,8 @@ int GetOnlineCommand(sat_packet_t *cmd) {
 		}
 
 		err = ParseDataToSPLPacket(rxFrameCmd.rx_framedata, cmd);
-		if (err == command_success && (cmd->ID == YCUBE_SAT_ID || cmd->ID == ALL_SAT_ID)) {
+		int sat_id = GetSatId(cmd);
+		if (err == command_success && (sat_id == YCUBE_SAT_ID || sat_id == ALL_SAT_ID)) {
 			return command_found;
 		}
 
@@ -172,5 +182,16 @@ int SetBeaconInterval(unsigned int *interval) {
 }
 
 int RestoreDefaultBeaconInterval() {
-    return UpdateAlpha(DEFAULT_BEACON_INTERVAL_TIME);
+	int interval = DEFAULT_BEACON_INTERVAL_TIME;
+    return SetBeaconInterval(&interval);
+}
+
+int SendAckPacket(ack_subtype_t acksubtype, sat_packet_t *cmd, unsigned char *data, unsigned short length) {
+	int err = AssembleAndSendPacket(data, length, ack_type, acksubtype, cmd->ID);
+	if (err != 0) {
+		// TODO: log error
+		return -1;
+	}
+
+	return 0;
 }
