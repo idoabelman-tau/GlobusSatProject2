@@ -3,8 +3,8 @@
 #define TRXVU_COMMANDS_H_
 
 #include "SubSystemModules/Communication/TRXVU.h"
-#include "SubSystemModules/Communication/AckHandler.h"
 #include "SubSystemModules/Communication/SatCommandHandler.h"
+#include "GlobalStandards.h"
 
 // wait time for taking semaphores
 #define WAIT_TIME_SEM_DUMP	3
@@ -69,6 +69,8 @@ int CMD_AntennaDeploy(sat_packet_t *cmd);
 
 
 int CMD_StopReDeployment(sat_packet_t *cmd);
+
+int CMD_Ping(sat_packet_t *cmd);
 
 #endif
 /*COMMANDS_H_ */

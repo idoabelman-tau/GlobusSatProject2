@@ -1,11 +1,12 @@
 #include "SatCommandHandler.h"
+#include "CommandDictionary.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id, sat_packet_t *cmd) {
 	if (cmd == NULL) {
-		return execution_error;
+		return E_INPUT_POINTER_NULL;
 	}
 
 	cmd->ID = id;
@@ -14,36 +15,56 @@ int AssembleSPLPacket(unsigned char *data, unsigned short data_length, char type
 	cmd->length = data_length;
 	if (data_length > 0) {
 		if (data == NULL) {
-			return execution_error;
+			return E_INPUT_POINTER_NULL;
 		}
 		memcpy(&cmd->data, data, data_length);
 	}
-	return command_success;
+	return E_NO_SS_ERR;
 }
 
 int ParseDataToSPLPacket(unsigned char * data, sat_packet_t *cmd) {
 	if (cmd == NULL) {
-		return execution_error;
+		return E_INPUT_POINTER_NULL;
 	}
 
 	// treat the data buffer as a struct, checking that the length is right then copying to the new struct
 	sat_packet_t * data_as_cmd = (sat_packet_t *) data;
 	if (data_as_cmd->length > MAX_COMMAND_DATA_LENGTH) {
-		return index_out_of_bound;
+		return E_PARAM_OUTOFBOUNDS;
 	}
 
 	return AssembleSPLPacket(data_as_cmd->data, data_as_cmd->length, data_as_cmd->cmd_type, data_as_cmd->cmd_subtype, data_as_cmd->ID, cmd);
 }
 
 int ActUponCommand(sat_packet_t *cmd) {
-	// dummy debug code for now
-	printf("ActUponCommand called\n");
-	printf("ID: %d", cmd->ID);
-	printf("Command type: %d", (int)cmd->cmd_type);
-	printf("Command subtype: %d", (int)cmd->cmd_subtype);
-	printf("Command data length: %d", cmd->length);
+	int cmd_res = 0;
 
-	SendAckPacket(ACK_COMD_EXEC, &cmd, NULL, 0);
+	switch (cmd->cmd_type) {
+	case trxvu_cmd_type:
+		cmd_res = trxvu_command_router(cmd);
+		break;
+	case eps_cmd_type:
+		cmd_res = eps_command_router(cmd);
+		break;
+	case telemetry_cmd_type:
+		cmd_res = telemetry_command_router(cmd);
+		break;
+	case managment_cmd_type:
+		cmd_res = trxvu_command_router(cmd);
+		break;
+	default:
+		cmd_res = E_COMMAND_TYPE_NOT_FOUND;
+	}
+
+	if (cmd_res == E_NO_SS_ERR) {
+		SendAckPacket(ACK_COMD_EXEC, cmd, NULL, 0);
+	} else if (cmd_res == E_COMMAND_TYPE_NOT_FOUND) {
+		SendAckPacket(ACK_UNKNOWN_TYPE, cmd, NULL, 0);
+	}
+	else {
+		SendAckPacket(ACK_ERROR_MSG, cmd, (unsigned char *)&cmd_res, sizeof(char));
+	}
+
 	return 0;
 }
 

@@ -75,7 +75,7 @@ Boolean TestGetOnlineCommand() {
 
 	printf("Testing getting command with none available\n");
 	int err = GetOnlineCommand(&cmd);
-	if (err != no_command_found) {
+	if (err != E_NO_COMMAND_FOUND) {
 		printf("GetOnlineCommand failed or got unexpected result: %d\n", err);
 		return FALSE;
 	} else {
@@ -87,7 +87,7 @@ Boolean TestGetOnlineCommand() {
 	int readval;
 	UTIL_DbguGetInteger(&readval);
 	err = GetOnlineCommand(&cmd);
-	if (err != no_command_found) {
+	if (err != E_NO_COMMAND_FOUND) {
 		printf("GetOnlineCommand failed or got unexpected result: %d\n", err);
 		return FALSE;
 	} else {
@@ -98,7 +98,7 @@ Boolean TestGetOnlineCommand() {
 	printf("Send command with ID equal %d and input any number\n", YCUBE_SAT_ID);
 	UTIL_DbguGetInteger(&readval);
 	err = GetOnlineCommand(&cmd);
-	if (err != command_found) {
+	if (err != E_NO_SS_ERR) {
 		printf("GetOnlineCommand failed or got unexpected result: %d\n", err);
 		return FALSE;
 	} else {
@@ -116,6 +116,8 @@ Boolean TestTrxLogic() {
 	if (err != 0) {
 		printf("Error in TRX_Logic");
 	}
+
+	return TRUE;
 }
 
 Boolean selectAndExecuteTRXVUTest() {
@@ -169,11 +171,12 @@ Boolean MainTrxvuTestBench() {
 
 	while(1)
 	{
-		offerMoreTests = selectAndExecuteTRXUVDemoTest();
+		offerMoreTests = selectAndExecuteTRXVUTest();
 
 		if(offerMoreTests == FALSE)
 		{
 			break;
 		}
 	}
+	return TRUE;
 }

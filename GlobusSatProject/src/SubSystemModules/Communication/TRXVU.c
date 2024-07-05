@@ -41,11 +41,11 @@ int TRX_Logic() {
 		err = GetDelayedCommand(sat_packet_t *cmd);
 	}*/ // delayed commands not currently implemented
 
-	if (err == command_found) { // a command was found either in online or delayed buffer
+	if (err == E_NO_SS_ERR) { // a command was found either in online or delayed buffer
 		SendAckPacket(ACK_RECEIVE_COMM, &cmd, NULL, 0);
 		err = ActUponCommand(&cmd);
 	}
-	else if (err != no_command_found) {
+	else if (err != E_NO_COMMAND_FOUND) {
 		// TODO: log error
 		printf("error getting command\n");
 	}
@@ -71,7 +71,7 @@ int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id) {
 	sat_packet_t packet;
 	int err = AssembleSPLPacket(data, data_length, type, subtype, id, &packet);
-	if (err != command_success) {
+	if (err != E_NO_SS_ERR) {
 		// TODO: log error
 		return -1;
 	}
@@ -128,7 +128,7 @@ int GetOnlineCommand(sat_packet_t *cmd) {
 	int err = IsisTrxvu_rcGetFrameCount(0, &RxCounter);
 	if (err != E_NO_SS_ERR) {
 		// TODO: log error
-		return execution_error;
+		return err;
 	}
 
 	while(RxCounter > 0)
@@ -136,24 +136,24 @@ int GetOnlineCommand(sat_packet_t *cmd) {
 		int err = IsisTrxvu_rcGetCommandFrame(0, &rxFrameCmd);
 		if (err != E_NO_SS_ERR) {
 			// TODO: log error
-			return execution_error;
+			return err;
 		}
 
 		err = ParseDataToSPLPacket(rxFrameCmd.rx_framedata, cmd);
 		int sat_id = GetSatId(cmd);
-		if (err == command_success && (sat_id == YCUBE_SAT_ID || sat_id == ALL_SAT_ID)) {
-			return command_found;
+		if (err == E_NO_SS_ERR && (sat_id == YCUBE_SAT_ID || sat_id == ALL_SAT_ID)) {
+			return err;
 		}
 
 		err = IsisTrxvu_rcGetFrameCount(0, &RxCounter);
 		if (err != E_NO_SS_ERR) {
 			// TODO: log error
-			return execution_error;
+			return err;
 		}
 
 	}
 
-	return no_command_found;
+	return E_NO_COMMAND_FOUND;
 }
 
 int GetBeaconInterval(unsigned int *interval) {
