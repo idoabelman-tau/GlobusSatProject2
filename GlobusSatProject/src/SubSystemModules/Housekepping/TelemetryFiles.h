@@ -4,18 +4,18 @@
 //	---general
 
 #define END_FILE_NAME_TX_REVC			"txr"
-#define END_FILE_NAME_TX				"tx"
-#define END_FILE_NAME_RX				"rx"
+#define DIR_NAME_TX						"tx"
+#define DIR_NAME_RX						"rx"
 #define END_FILE_NAME_RX_REVC           "rxr"
-#define END_FILE_NAME_RX_FRAME 			"rxf"
-#define END_FILE_NAME_ANTENNA			"ant"
-#define END_FILENAME_WOD_TLM			"wod"
+#define DIR_NAME_RX_FRAME 				"rxf"
+#define DIR_NAME_ANTENNA				"ant"
+#define DIR_NAME_WOD_TLM				"wod"
 #define	END_FILENAME_EPS_RAW_MB_TLM		"erm"
-#define END_FILENAME_EPS_TLM			"eps"
+#define DIR_NAME_EPS_TLM				"eps"
 #define END_FILENAME_EPS_RAW_CDB_TLM	"erc"
 #define END_FILENAME_EPS_ENG_CDB_TLM	"eec"
-#define	END_FILENAME_SOLAR_PANELS_TLM	"slr"
-#define	END_FILENAME_LOGS				"log"
+#define	DIR_NAME_SOLAR_PANELS_TLM		"slr"
+#define	DIR_NAME_LOGS					"log"
 
 
 

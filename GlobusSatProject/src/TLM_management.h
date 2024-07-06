@@ -129,7 +129,7 @@ void DeInitializeFS(int sd_card);
  * FS_FRAM_FAIL,
  * FS_SUCCSESS on success.
  */
-FileSystemResult c_fileCreate(char* c_file_name); // took out size of element
+FileSystemResult c_fileCreate(char* c_file_name , int size_of_element);
 /*!
  * Write element to c_file.
  * @param c_file_name the name of the c_file.
@@ -138,7 +138,7 @@ FileSystemResult c_fileCreate(char* c_file_name); // took out size of element
  * FS_LOCKED if c_file used by other thread,
  * FS_SUCCSESS on success.
  */
-FileSystemResult c_fileWrite(char* c_file_name, void* element, int size_of_element); // added size of element
+FileSystemResult c_fileWrite(char* c_file_name, void* element);
 
 /*!
  * Delete elements from c_file from "from_time" to "to_time".
