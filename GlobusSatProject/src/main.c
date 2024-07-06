@@ -19,11 +19,12 @@
 #include "GlobalStandards.h"
 #include "SubSystemModules/PowerManagement/EPS.h"
 #include "SubSystemModules/Communication/TRXVU.h"
-#include "SubSystemModules/Housekepping/TelemetryCollector.h"
+#include "SubSystemModules/Housekeeping/TelemetryCollector.h"
 #include "SubSystemModules/Maintenance/Maintenance.h"
 #include "InitSystem.h"
 #include "main.h"
 
+#include "TestingDemos/MainTest.h"
 
 void listFiels(){
 
@@ -110,6 +111,8 @@ void test(){
 
 
 	printf("test value:%ld \n",value);
+
+	taskTesting();
 
 }
 

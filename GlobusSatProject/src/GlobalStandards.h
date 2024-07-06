@@ -56,5 +56,9 @@ typedef short power_t;		///< in mW
 typedef short temp_t;				///< in Celsius
 typedef unsigned char channel_t;	///< each bit represents a specific system state. 1 = ON; 0 = OFF
 
+// additional errors
+#define E_NO_COMMAND_FOUND -38 // no command found in buffers
+#define E_INVALID_SAT_ID -39 // satellite ID in command is invalid
+#define E_COMMAND_TYPE_NOT_FOUND -40 // the command type or subtype were not found
 
 #endif /* GLOBALSTANDARDS_H_ */

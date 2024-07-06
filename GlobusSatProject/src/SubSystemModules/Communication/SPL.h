@@ -6,9 +6,8 @@ typedef enum __attribute__ ((__packed__)) spl_command_type_t {
 	trxvu_cmd_type,
 	eps_cmd_type,
 	telemetry_cmd_type, //2
-	filesystem_cmd_type,
 	managment_cmd_type,
-	ack_type,// 5
+	ack_type,// 4
 	dump_type
 }spl_command_type;
 
@@ -55,7 +54,7 @@ typedef enum __attribute__ ((__packed__)) ack_subtype_t
 	ACK_DELETE_TLM = 0xC0,					// after deleting TLM file(s)
 
 	ACK_PING = 0xAA,
-	ACK_UNKNOWN_SUBTYPE = 0xBB,				//when the given subtype is unknown
+	ACK_UNKNOWN_TYPE = 0xBB,				//when the given type or subtype are unknown
 	ACK_ERROR_MSG = 0XFF 					// send this ACK when error has occurred
 }ack_subtype_t;
 

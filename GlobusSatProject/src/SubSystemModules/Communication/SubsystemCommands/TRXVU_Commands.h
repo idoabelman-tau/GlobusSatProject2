@@ -3,8 +3,8 @@
 #define TRXVU_COMMANDS_H_
 
 #include "SubSystemModules/Communication/TRXVU.h"
-#include "SubSystemModules/Communication/AckHandler.h"
 #include "SubSystemModules/Communication/SatCommandHandler.h"
+#include "GlobalStandards.h"
 
 // wait time for taking semaphores
 #define WAIT_TIME_SEM_DUMP	3
@@ -40,6 +40,8 @@ int CMD_SetBaudRate(sat_packet_t *cmd);
 
 int CMD_GetBeaconInterval(sat_packet_t *cmd);
 
+int CMD_SetBeaconInterval(sat_packet_t *cmd);
+
 int CMD_TrasmitBeacon(sat_packet_t *cmd);
 
 
@@ -51,9 +53,9 @@ int CMD_GetNumOfDelayedCommands(sat_packet_t *cmd);
 
 int CMD_GetNumOfOnlineCommands(sat_packet_t *cmd);
 
-int CMD_DeleteDelyedCmdByID(sat_packet_t *cmd);
+int CMD_DeleteDelayedCmdByID(sat_packet_t *cmd);
 
-int CMD_DeleteAllDelyedBuffer(sat_packet_t *cmd);
+int CMD_DeleteAllDelayedBuffer(sat_packet_t *cmd);
 
 int CMD_AntSetArmStatus(sat_packet_t *cmd);
 
@@ -67,6 +69,8 @@ int CMD_AntennaDeploy(sat_packet_t *cmd);
 
 
 int CMD_StopReDeployment(sat_packet_t *cmd);
+
+int CMD_Ping(sat_packet_t *cmd);
 
 #endif
 /*COMMANDS_H_ */
