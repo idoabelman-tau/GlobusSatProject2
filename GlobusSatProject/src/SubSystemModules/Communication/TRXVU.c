@@ -42,6 +42,7 @@ int TRX_Logic() {
 	}*/ // delayed commands not currently implemented
 
 	if (err == E_NO_SS_ERR) { // a command was found either in online or delayed buffer
+		ResetGroundCommWDT();
 		SendAckPacket(ACK_RECEIVE_COMM, &cmd, NULL, 0);
 		err = ActUponCommand(&cmd);
 	}
@@ -82,6 +83,13 @@ int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char 
 		return -1;
 	}
 	return 0;
+}
+
+void ResetGroundCommWDT() {
+	Time time;
+	Time_get(Time *time);
+	time_unix unixtime = Time_convertTimeToEpoch(time);
+	FRAM_write((unsigned char*) &unixtime, LAST_COMM_TIME_ADDR, LAST_COMM_TIME_SIZE);
 }
 
 int BeaconLogic() {

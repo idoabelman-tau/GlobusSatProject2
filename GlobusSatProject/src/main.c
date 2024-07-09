@@ -116,6 +116,14 @@ void test(){
 
 }
 
+void mainloop() {
+	while(TRUE()) {
+		EPS_Conditioning();
+		TRX_Logic();
+		TelemetryCollectorLogic();
+		Maintenance();
+	}
+}
 
 void taskMain()
 {
@@ -124,7 +132,11 @@ void taskMain()
 	InitSubsystems();
 	//listFiels();
 	//changeFirstActivation(TRUE);
+#ifdef TESTING
 	test();
+#else
+	mainloop();
+#endif
 }
 
 // main operation function. will be called upon software boot.

@@ -86,6 +86,11 @@ int RestoreDefaultBeaconInterval();
  */
 int TRX_Logic();
 
+/*!
+ * @brief resets the ground station communication WDT because communication took place.
+ */
+void ResetGroundCommWDT();
+
 /**
  * sets the transponder's RSSI value
  */

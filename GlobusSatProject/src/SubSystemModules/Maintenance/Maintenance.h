@@ -3,6 +3,7 @@
 #define MAINTENANCE_H_
 
 #include "GlobalStandards.h"
+#include "hal/Timing/Time.h"
 
 
 #define MIN_FREE_SPACE 300000000
@@ -20,7 +21,7 @@ int HardResetMCU();
  * minFreeSpace - the minimum free space in bytes we want to keep in the SD in all times.
  * If free space<minFreeSpace we start deleteing old TLM files
  */
-int DeleteOldFiels(int minFreeSpace);
+int DeleteOldFiles(int minFreeSpace);
 
 /*!
  * @brief checks if the period time has passed
@@ -49,11 +50,6 @@ void SaveSatTimeInFRAM(unsigned int time_addr, unsigned int time_size);
  * 			FALSE if no corruption(yay!)
  */
 Boolean IsFS_Corrupted();
-
-/*!
- * @brief resets the ground station communication WDT because communication took place.
- */
-void ResetGroundCommWDT();
 
 /*!
  * @brief 	Checks if last GS communication time has exceeded its maximum allowed time.
