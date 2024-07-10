@@ -5,6 +5,8 @@
 #define RECIEVER_I2C_ADDRESS 0x60
 #define TRANSMITTER_I2C_ADDRESS 0x61
 
+Boolean TrxMuted = FALSE;
+
 int InitTrxvu(){
 	//definitions
 
@@ -34,6 +36,10 @@ int InitTrxvu(){
 }
 
 int TRX_Logic() {
+	if (CheckForMuteEnd()) {
+		UnMuteTRXVU();
+	}
+
 	sat_packet_t cmd;
 	int err = GetOnlineCommand(&cmd);
 
@@ -56,17 +62,24 @@ int TRX_Logic() {
 	return err;
 }
 
+Boolean CheckTransmitionAllowed() {
+	return !TrxMuted && GetSystemState != SafeMode;
+}
+
 int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 	unsigned char packet_length = sizeof(sat_packet_t) - sizeof(packet->data) + packet->length; // only submit the actual data
-	int err = IsisTrxvu_tcSendAX25DefClSign(0, (unsigned char *)packet, packet_length, (unsigned char *)avalFrames);
+	if (CheckTransmissionAllowed()) {
+		int err = IsisTrxvu_tcSendAX25DefClSign(0, (unsigned char *)packet, packet_length, (unsigned char *)avalFrames);
 
-	if(err != E_NO_SS_ERR){
-		printf("error sending packet\n");
-		//TODO: log error
-		return  err;
+		if(err != E_NO_SS_ERR){
+			printf("error sending packet\n");
+			//TODO: log error
+			return  err;
+		}
 	}
-
-	return err;
+	else {
+		return E_CANT_TRANSMIT;
+	}
 }
 
 int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char type, char subtype,unsigned int id) {
@@ -202,4 +215,45 @@ int SendAckPacket(ack_subtype_t acksubtype, sat_packet_t *cmd, unsigned char *da
 	}
 
 	return 0;
+}
+
+int setMuteEndTime(time_unix *endTime) {
+	int err = FRAM_write((unsigned char*) endTime, MUTE_END_TIME_ADDR, MUTE_END_TIME_SIZE);
+
+	return err;
+}
+
+int getMuteEndTime(time_unix *endTime) {
+	int err = FRAM_read((unsigned char*) endTime, MUTE_END_TIME_ADDR, MUTE_END_TIME_SIZE);
+
+	return err;
+}
+
+int SetIdleState(ISIStrxvuIdleState state, time_unix duration) {
+	return IsisTrxvu_tcSetIdlestate(0, state);
+}
+
+int muteTRXVU(time_unix duration) {
+	Time time;
+	Time_get(Time *time);
+	time_unix unixtime = Time_convertTimeToEpoch(time);
+	setMuteEndTime(unixtime + duration);
+	TrxMuted = TRUE;
+}
+
+void UnMuteTRXVU() {
+	Time time;
+	Time_get(Time *time);
+	time_unix unixtime = Time_convertTimeToEpoch(time);
+	setMuteEndTime(unixtime); // set the mute end time to now so that even if we get muted by a bit flip we will automatically unmute
+	TrxMuted = FALSE;
+}
+
+Boolean CheckForMuteEnd() {
+	Time time;
+	Time_get(Time *time);
+	time_unix unixtime = Time_convertTimeToEpoch(time);
+	time_unix endtime;
+	getMuteEndTime(&endtime);
+	return unixtime > endtime;
 }

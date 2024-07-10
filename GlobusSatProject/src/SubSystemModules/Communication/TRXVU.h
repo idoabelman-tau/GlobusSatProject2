@@ -9,10 +9,10 @@
 #include "GlobalStandards.h"
 #include "SatCommandHandler.h"
 #include "utils.h"
-#include "errors.h"
 #include <hal/Timing/Time.h>
 #include "FRAM_FlightParameters.h"
 #include "SPL.h"
+#include "StateMachine.h"
 
 #define MAX_MUTE_TIME 		(60*60*24) 	///< max mute duration will be 90 minutes = 60 *90 [sec]
 #define MAX_IDLE_TIME 		(2400) 	///< max IDLE duration will be 20 minutes = 120 *20 [sec]
@@ -38,12 +38,6 @@ typedef enum __attribute__ ((__packed__)) _ISIStrxvuTransponderMode
     trxvu_transponder_off = 0x01,
     trxvu_transponder_on = 0x02
 } ISIStrxvutransponderMode;
-
-
-void setMuteEndTime(time_unix endTime);
-
-time_unix getMuteEndTime();
-
 
 time_unix getTransponderEndTime();
 
@@ -153,6 +147,10 @@ int SendBeacon();
  */
 int SetIdleState(ISIStrxvuIdleState state, time_unix duration);
 
+int setMuteEndTime(time_unix *endTime);
+
+int getMuteEndTime(time_unix *endTime);
+
 /*!
  * @brief	mutes the TRXVU for a specified time frame
  * @param[in] duration for how long will the satellite be in mute state
@@ -165,8 +163,6 @@ int muteTRXVU(time_unix duration);
  * @brief Cancels TRXVU mute - transmission is now enabled
  */
 void UnMuteTRXVU();
-
-
 
 /*!
  * @brief checks if the Trxvu mute time has terminated
