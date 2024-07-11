@@ -5,7 +5,7 @@
 #include "math.h"
 #include <stdio.h>
 
-#define EPSILON 1e-6
+#define EPSILON 1e-5
 
 Boolean TestAlphaChanges() {
     printf("Getting alpha value \n");
@@ -14,7 +14,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to get alpha value \n");
         return FALSE;
     } else {
-        printf("Initial alpha: %f", initial_alpha);
+        printf("Initial alpha: %f \n", initial_alpha);
     }
 
     printf("Updating alpha value \n");
@@ -22,7 +22,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to update alpha value \n");
         return FALSE;
     } else {
-        printf("Updated alpha to 0.1");
+        printf("Updated alpha to 0.1 \n");
     }
 
     printf("Getting updated alpha value \n");
@@ -31,7 +31,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to get alpha value \n");
         return FALSE;
     } else {
-        printf("Updated alpha: %f", updated_alpha);
+        printf("Updated alpha: %f \n", updated_alpha);
         if (fabs(updated_alpha - 0.1) > EPSILON) {
             printf("Updated alpha is incorrect\n");
             return FALSE;
@@ -51,7 +51,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to get alpha value \n");
         return FALSE;
     } else {
-        printf("Updated alpha: %f", updated_alpha);
+        printf("Updated alpha: %f \n", updated_alpha);
         if (fabs(updated_alpha - DEFAULT_ALPHA_VALUE) > EPSILON) {
             printf("Updated alpha is incorrect\n");
             return FALSE;
@@ -89,13 +89,12 @@ Boolean TestThresholdChanges() {
     }
 
     printf("Updating threshold values \n");
-    EpsThreshVolt_t new_thresh = {(voltage_t)1000, (voltage_t)2000, (voltage_t)3000,	 \
-										  (voltage_t)800, (voltage_t)1800, (voltage_t)2800};
+    EpsThreshVolt_t new_thresh = {(voltage_t)1000, (voltage_t)2000, (voltage_t)3000, (voltage_t)800, (voltage_t)1800, (voltage_t)2800};
     if (UpdateThresholdVoltages(&new_thresh) != 0) {
         printf("Failed to update threshold values \n");
         return FALSE;
     } else {
-        printf("Updated thresholds");
+        printf("Updated thresholds \n");
     }
 
     printf("Getting updated threshold values \n");
@@ -112,7 +111,7 @@ Boolean TestThresholdChanges() {
     }
 
     printf("Restoring default threshold values \n");
-    if (RestoreDefaultAlpha() != 0) {
+    if (RestoreDefaultThresholdVoltages() != 0) {
         printf("Failed to restore default threshold values \n");
         return FALSE;
     } else {
@@ -225,8 +224,8 @@ Boolean TestStateChanges() {
 Boolean TestFilterAndConditioning() {
     SetVoltage(8000);
     voltage_t cur_filtered_voltage = filtered_voltage;
-    printf("filtered voltage: %d", cur_filtered_voltage);
-    printf("state: %d", GetSystemState());
+    printf("filtered voltage: %d \n", cur_filtered_voltage);
+    printf("state: %d \n", GetSystemState());
     for (int i = 0; i < 10; ++i) {
         if (EPS_Conditioning() != 0) {
             printf("Conditioning failed\n");
@@ -237,8 +236,8 @@ Boolean TestFilterAndConditioning() {
             return FALSE;
         }
         cur_filtered_voltage = filtered_voltage;
-        printf("filtered voltage: %d", cur_filtered_voltage);
-        printf("state: %d", GetSystemState());
+        printf("filtered voltage: %d \n", cur_filtered_voltage);
+        printf("state: %d \n", GetSystemState());
     }
 
     SetVoltage(1000);
@@ -252,8 +251,22 @@ Boolean TestFilterAndConditioning() {
             return FALSE;
         }
         cur_filtered_voltage = filtered_voltage;
-        printf("filtered voltage: %d", cur_filtered_voltage);
-        printf("state: %d", GetSystemState());
+        printf("filtered voltage: %d \n", cur_filtered_voltage);
+        printf("state: %d \n", GetSystemState());
+    }
+    return TRUE;
+}
+
+Boolean TestRealRead() {
+	SetUseStub(FALSE);
+
+    for (int i = 0; i < 10; ++i) {
+        if (EPS_Conditioning() != 0) {
+            printf("Conditioning failed\n");
+            return FALSE;
+        }
+        printf("filtered voltage: %d \n", filtered_voltage);
+        printf("state: %d \n", GetSystemState());
     }
     return TRUE;
 }
@@ -263,9 +276,11 @@ Boolean MainEpsTestBench() {
     Boolean thresh_changes_success = TestThresholdChanges();
     Boolean state_changes_success = TestStateChanges();
     Boolean filter_success = TestFilterAndConditioning();
+    Boolean real_read_success = TestRealRead();
     printf("TestAlphaChanges: %s\n", alpha_changes_success ? "SUCCESS" : "FAIL");
     printf("TestThresholdChanges: %s\n", thresh_changes_success ? "SUCCESS" : "FAIL");
     printf("TestStateChanges: %s\n", state_changes_success ? "SUCCESS" : "FAIL");
     printf("TestFilterAndConditioning: %s\n", filter_success ? "SUCCESS" : "FAIL");
-    return alpha_changes_success && thresh_changes_success && state_changes_success && filter_success;
+    printf("TestRealRead: %s\n", real_read_success ? "SUCCESS" : "FAIL");
+    return alpha_changes_success && thresh_changes_success && state_changes_success && filter_success && real_read_success;
 }

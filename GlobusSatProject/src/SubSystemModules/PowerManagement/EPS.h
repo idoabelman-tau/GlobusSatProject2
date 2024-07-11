@@ -10,6 +10,7 @@
 #include "GlobalStandards.h"
 #include "StateMachine.h"
 #include "SubSystemModules/Communication/SatCommandHandler.h"
+#include "TestingDemos/EpsStub.h"
 #include <stdint.h>
 
 /*
@@ -66,7 +67,17 @@ int EPS_Conditioning();
  * @return	0 on success
  * 			Error code according to <hal/errors.h>
  */
-int GetBatteryVoltage(voltage_t *vbat);
+
+int GetBatteryVoltage_isis(voltage_t *vbat);
+int GetBatteryVoltage_gom(voltage_t *vbat);
+
+#ifdef TESTING
+#define GetBatteryVoltage GetBatteryVoltage_stub
+#elif defined(GOMEPS)
+#define GetBatteryVoltage GetBatteryVoltage_gom
+#elif defined(ISISEPS)
+#define GetBatteryVoltage GetBatteryVoltage_isis
+#endif
 
 /*!
  * @brief getting the smoothing factor (alpha) from the FRAM.

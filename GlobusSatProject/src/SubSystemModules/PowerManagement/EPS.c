@@ -8,12 +8,11 @@
 #include "utils.h"
 #include "StateMachine.h"
 
-#ifdef TESTING
-#include "TestingDemos/EpsStub.h"
-#define imepsv2_piu__gethousekeepingeng imepsv2_piu__gethousekeepingeng_stub
-#else
+
+#include <satellite-subsystems/GomEPS.h>
 #include <satellite-subsystems/imepsv2_piu.h>
-#endif
+#include "TestingDemos/EpsStub.h"
+
 
 #define EPS_I2C_ADDRESS 0x20 //TODO: make sure this address (in demo) is hard coded in eps
 
@@ -33,18 +32,28 @@ int EPS_Init() {
 
 	IMEPSV2_PIU_t EPS_INIT_STRUCT;
 	EPS_INIT_STRUCT.i2cAddr = EPS_I2C_ADDRESS;
+
+#ifdef ISISEPS
 	EPS_ERR_FLAG = IMEPSV2_PIU_Init(&EPS_INIT_STRUCT, 1);
 
-	if( EPS_ERR_FLAG == driver_error_reinit || EPS_ERR_FLAG != driver_error_none)
+	if( EPS_ERR_FLAG != driver_error_reinit && EPS_ERR_FLAG != driver_error_none)
 	// re-initialization is not an error
 	{
 		//TODO: add error log
 		return EPS_ERR_FLAG;
 	}
+#endif
+#ifdef GOMEPS
+	EPS_ERR_FLAG = GomEpsInitialize(&EPS_INIT_STRUCT, 1);
 
-	if(RestoreDefaultAlpha() != 0) {
-		return -1;
+	if( EPS_ERR_FLAG != E_IS_INITIALIZED && EPS_ERR_FLAG != E_NO_SS_ERR)
+	// re-initialization is not an error
+	{
+		//TODO: add error log
+		return EPS_ERR_FLAG;
 	}
+#endif
+
 
     filtered_voltage = 0;
 
@@ -73,10 +82,8 @@ int EPS_Conditioning() {
     return ChangeStateByVoltage(filtered_voltage);
 }
 
-int GetBatteryVoltage(voltage_t *vbat) {
-
+int GetBatteryVoltage_isis(voltage_t *vbat) {
     imepsv2_piu__gethousekeepingeng__from_t response;
-
 
     int error = imepsv2_piu__gethousekeepingeng(0,&response);
     if (error) {
@@ -87,12 +94,24 @@ int GetBatteryVoltage(voltage_t *vbat) {
     return 0;
 }
 
+int GetBatteryVoltage_gom(voltage_t *vbat) {
+	gom_eps_hk_t myEpsTelemetry_hk;
+	int error = GomEpsGetHkData_general(0, &myEpsTelemetry_hk);
+	if (error != E_NO_SS_ERR) {
+		// TODO: log error
+		return error;
+	}
+
+    *vbat = myEpsTelemetry_hk.fields.vbatt;
+    return 0;
+}
+
 int GetAlpha(float *alpha) {
     if (alpha == NULL) {
         return -1;
     }
 
-    int err = FRAM_read((unsigned char*) &alpha, EPS_ALPHA_FILTER_VALUE_ADDR, EPS_ALPHA_FILTER_VALUE_SIZE);
+    int err = FRAM_read((unsigned char*) alpha, EPS_ALPHA_FILTER_VALUE_ADDR, EPS_ALPHA_FILTER_VALUE_SIZE);
     if (err != 0) {
         return -1;
     }
