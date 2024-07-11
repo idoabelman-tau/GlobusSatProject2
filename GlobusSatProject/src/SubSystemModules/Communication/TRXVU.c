@@ -62,8 +62,8 @@ int TRX_Logic() {
 	return err;
 }
 
-Boolean CheckTransmitionAllowed() {
-	return !TrxMuted && GetSystemState != SafeMode;
+Boolean CheckTransmissionAllowed() {
+	return !TrxMuted && GetSystemState() != SafeMode;
 }
 
 int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
@@ -74,8 +74,8 @@ int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 		if(err != E_NO_SS_ERR){
 			printf("error sending packet\n");
 			//TODO: log error
-			return  err;
 		}
+		return  err;
 	}
 	else {
 		return E_CANT_TRANSMIT;
@@ -100,8 +100,8 @@ int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char 
 
 void ResetGroundCommWDT() {
 	Time time;
-	Time_get(Time *time);
-	time_unix unixtime = Time_convertTimeToEpoch(time);
+	Time_get(&time);
+	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	FRAM_write((unsigned char*) &unixtime, LAST_COMM_TIME_ADDR, LAST_COMM_TIME_SIZE);
 }
 
@@ -203,7 +203,7 @@ int SetBeaconInterval(unsigned int *interval) {
 }
 
 int RestoreDefaultBeaconInterval() {
-	int interval = DEFAULT_BEACON_INTERVAL_TIME;
+	unsigned int interval = DEFAULT_BEACON_INTERVAL_TIME;
     return SetBeaconInterval(&interval);
 }
 
@@ -235,24 +235,26 @@ int SetIdleState(ISIStrxvuIdleState state, time_unix duration) {
 
 int muteTRXVU(time_unix duration) {
 	Time time;
-	Time_get(Time *time);
-	time_unix unixtime = Time_convertTimeToEpoch(time);
-	setMuteEndTime(unixtime + duration);
+	Time_get(&time);
+	time_unix unixtime = Time_convertTimeToEpoch(&time);
+	unixtime += duration;
+	int err = setMuteEndTime(&unixtime);
 	TrxMuted = TRUE;
+	return err;
 }
 
 void UnMuteTRXVU() {
 	Time time;
-	Time_get(Time *time);
-	time_unix unixtime = Time_convertTimeToEpoch(time);
-	setMuteEndTime(unixtime); // set the mute end time to now so that even if we get muted by a bit flip we will automatically unmute
+	Time_get(&time);
+	time_unix unixtime = Time_convertTimeToEpoch(&time);
+	setMuteEndTime(&unixtime); // set the mute end time to now so that even if we get muted by a bit flip we will automatically unmute
 	TrxMuted = FALSE;
 }
 
 Boolean CheckForMuteEnd() {
 	Time time;
-	Time_get(Time *time);
-	time_unix unixtime = Time_convertTimeToEpoch(time);
+	Time_get(&time);
+	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	time_unix endtime;
 	getMuteEndTime(&endtime);
 	return unixtime > endtime;

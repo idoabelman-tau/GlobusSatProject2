@@ -11,6 +11,7 @@
 #include "StateMachine.h"
 #include "SubSystemModules/Communication/SatCommandHandler.h"
 #include "TestingDemos/EpsStub.h"
+#include "initSystem.h"
 #include <stdint.h>
 
 /*

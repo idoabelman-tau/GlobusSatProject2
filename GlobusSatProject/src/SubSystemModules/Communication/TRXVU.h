@@ -102,7 +102,7 @@ Boolean CheckDumpAbort();
  * @return	TRUE if transmission is allowed
  * 			FALSE if transmission is denied
  */
-Boolean CheckTransmitionAllowed();
+Boolean CheckTransmissionAllowed();
 
 /*!
  * @brief 	Transmits a packet according to the SPL protocol

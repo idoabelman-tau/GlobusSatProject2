@@ -22,8 +22,8 @@ Boolean IsGroundCommunicationWDTKick() {
 	}
 
 	Time time;
-	Time_get(Time *time);
-	time_unix unixtime = Time_convertTimeToEpoch(time);
+	Time_get(&time);
+	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	if (unixtime - last_comm_time > no_comm_wdt_kick_time) {
 		return TRUE;
 	}
@@ -37,8 +37,8 @@ Boolean IsGroundCommunicationWDTKick() {
 void Maintenance() {
 	DeleteOldFiles(MIN_FREE_SPACE);
 
-	if (IsGroundCommunicationWDTKick) {
-		reset();
+	if (IsGroundCommunicationWDTKick()) {
+		restart();
 	}
 }
 

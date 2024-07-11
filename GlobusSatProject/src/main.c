@@ -117,7 +117,7 @@ void test(){
 }
 
 void mainloop() {
-	while(TRUE()) {
+	while(TRUE) {
 		EPS_Conditioning();
 		TRX_Logic();
 		TelemetryCollectorLogic();

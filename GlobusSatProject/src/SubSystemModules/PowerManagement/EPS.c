@@ -30,10 +30,11 @@ int EPS_Init() {
 		return SPI_ERR_FLAG;
 	}
 
+
+#ifdef ISISEPS
 	IMEPSV2_PIU_t EPS_INIT_STRUCT;
 	EPS_INIT_STRUCT.i2cAddr = EPS_I2C_ADDRESS;
 
-#ifdef ISISEPS
 	EPS_ERR_FLAG = IMEPSV2_PIU_Init(&EPS_INIT_STRUCT, 1);
 
 	if( EPS_ERR_FLAG != driver_error_reinit && EPS_ERR_FLAG != driver_error_none)
@@ -44,8 +45,9 @@ int EPS_Init() {
 	}
 #endif
 #ifdef GOMEPS
-	EPS_ERR_FLAG = GomEpsInitialize(&EPS_INIT_STRUCT, 1);
-
+	unsigned char eps_i2c_addr = EPS_I2C_ADDRESS;
+	EPS_ERR_FLAG = GomEpsInitialize(&eps_i2c_addr, 1);
+	EPS_ERR_FLAG += GomEpsPing(EPS_I2C_BUS_INDEX, eps_i2c_addr, &eps_i2c_addr);
 	if( EPS_ERR_FLAG != E_IS_INITIALIZED && EPS_ERR_FLAG != E_NO_SS_ERR)
 	// re-initialization is not an error
 	{

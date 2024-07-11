@@ -130,7 +130,7 @@ Boolean selectAndExecuteTRXVUTest() {
 		printf("\t 4) Full TRX logic \n\r");
 		printf("\t 5) Go back \n\r");
 
-		while(UTIL_DbguGetIntegerMinMax(&selection, 1, 2) == 0);
+		while(UTIL_DbguGetIntegerMinMax(&selection, 1, 5) == 0);
 
 		switch(selection)
 		{
