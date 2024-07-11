@@ -19,11 +19,12 @@
 #include "GlobalStandards.h"
 #include "SubSystemModules/PowerManagement/EPS.h"
 #include "SubSystemModules/Communication/TRXVU.h"
-#include "SubSystemModules/Housekepping/TelemetryCollector.h"
+#include "SubSystemModules/Housekeeping/TelemetryCollector.h"
 #include "SubSystemModules/Maintenance/Maintenance.h"
 #include "InitSystem.h"
 #include "main.h"
 
+#include "TestingDemos/MainTest.h"
 
 void listFiels(){
 
@@ -111,8 +112,18 @@ void test(){
 
 	printf("test value:%ld \n",value);
 
+	taskTesting();
+
 }
 
+void mainloop() {
+	while(TRUE()) {
+		EPS_Conditioning();
+		TRX_Logic();
+		TelemetryCollectorLogic();
+		Maintenance();
+	}
+}
 
 void taskMain()
 {
@@ -121,7 +132,11 @@ void taskMain()
 	InitSubsystems();
 	//listFiels();
 	//changeFirstActivation(TRUE);
+#ifdef TESTING
 	test();
+#else
+	mainloop();
+#endif
 }
 
 // main operation function. will be called upon software boot.
@@ -132,13 +147,13 @@ int main()
 	TRACE_CONFIGURE_ISP(DBGU_STANDARD, 2000000, BOARD_MCK);
 	// Enable the Instruction cache of the ARM9 core. Keep the MMU and Data Cache disabled.
 	CP15_Enable_I_Cache();
+		// The actual watchdog is already started, this only initializes the watchdog-kick interface.
+		WDT_start();
 
-	// The actual watchdog is already started, this only initializes the watchdog-kick interface.
-	WDT_start();
+		// create the main operation task of the satellite
+		xTaskGenericCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
+				configMAX_PRIORITIES - 2, &taskMainHandle, NULL, NULL);
+		vTaskStartScheduler();
+		exit(0);
 
-	// create the main operation task of the satellits
-	xTaskGenericCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
-			configMAX_PRIORITIES - 2, &taskMainHandle, NULL, NULL);
-	vTaskStartScheduler();
-	exit(0);
 }

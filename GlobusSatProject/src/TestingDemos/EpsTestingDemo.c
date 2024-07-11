@@ -43,7 +43,7 @@ Boolean TestAlphaChanges() {
         printf("Failed to restore default alpha value \n");
         return FALSE;
     } else {
-        printf("Restored default value alpha\n");
+        printf("Restored default value alpha \n");
     }
 
     printf("Getting updated alpha value \n");

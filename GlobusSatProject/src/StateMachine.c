@@ -4,6 +4,7 @@
 
 /* global variables */
 State_t state;
+Boolean lowVoltageFlag = FALSE;
 
 int StateMachine_init() {
 	if(RestoreDefaultThresholdVoltages() != 0) {
@@ -22,11 +23,13 @@ int EnterFullMode() {
 
 int EnterCruiseMode() {
     state = CruiseMode;
+    SetIdleState(trxvu_idle_state_on, 0);
     return 0;
 }
 
 int EnterSafeMode() {
     state = SafeMode;
+    SetIdleState(trxvu_idle_state_off, 0);
     return 0;
 }
 
@@ -43,12 +46,16 @@ State_t GetSystemState() {
 
 channel_t GetSystemChannelState();
 
-Boolean EpsGetLowVoltageFlag();
+Boolean EpsGetLowVoltageFlag() {
+	return lowVoltageFlag;
+}
 
-void EpsSetLowVoltageFlag(Boolean low_volt_flag);
+void EpsSetLowVoltageFlag(Boolean low_volt_flag) {
+	lowVoltageFlag = low_volt_flag;
+}
 
 int UpdateThresholdVoltages(EpsThreshVolt_t *thresh_volts) {
-    int error = FRAM_write((unsigned char*) &thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
+    int error = FRAM_write((unsigned char*) thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
     if (error != 0) {
         return -1;
     }
@@ -61,7 +68,7 @@ int RestoreDefaultThresholdVoltages() {
 }
 
 int GetThresholdVoltages(EpsThreshVolt_t thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES]) {
-    int error = FRAM_read((unsigned char*) &thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
+    int error = FRAM_read((unsigned char*) thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
     if (error != 0) {
         return -1;
     }

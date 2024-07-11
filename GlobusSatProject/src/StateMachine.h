@@ -3,10 +3,11 @@
 
 
 #include "GlobalStandards.h"
+#include "SubSystemModules/Communication/TRXVU.h"
 
 
 #define CHANNELS_OFF 0x00 	//!< channel state when all systems are off
-#define CHNNELS_ON	 0XFF	//!< channel
+#define CHANNELS_ON	 0XFF	//!< channel
 #define SYSTEM0		 0x01	//!< channel state when 'SYSTEM0' is on
 #define SYSTEM1		 0x02	//!< channel state when 'SYSTEM1' is on
 #define SYSTEM2 	 0x04	//!< channel state when 'SYSTEM2' is on
