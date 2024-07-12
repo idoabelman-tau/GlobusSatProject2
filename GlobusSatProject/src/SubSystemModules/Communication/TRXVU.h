@@ -113,6 +113,12 @@ Boolean CheckTransmissionAllowed();
 int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames);
 
 /*!
+ * @brief starts a dump task
+ * @param[in] arguments arguments for the dump task
+ */
+int StartDump(dump_arguments_t *arguments);
+
+/*!
  * @brief sends an abort message via a freeRTOS queue.
  */
 void SendDumpAbortRequest();

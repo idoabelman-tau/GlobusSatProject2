@@ -6,6 +6,8 @@
 #define TRANSMITTER_I2C_ADDRESS 0x61
 
 Boolean TrxMuted = FALSE;
+dump_arguments_t CurrDumpArguments; // global to pass between tasks
+Boolean DumpRunning = FALSE;
 
 int InitTrxvu(){
 	//definitions
@@ -63,7 +65,7 @@ int TRX_Logic() {
 }
 
 Boolean CheckTransmissionAllowed() {
-	return !TrxMuted && GetSystemState() != SafeMode;
+	return !TrxMuted && TransmissionAllowedByState();
 }
 
 int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
@@ -96,6 +98,26 @@ int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char 
 		return -1;
 	}
 	return 0;
+}
+
+int taskDump() {
+	unsigned char data[MAX_COMMAND_DATA_LENGTH] = {0};
+	unsigned int *dump_index = (unsigned int *)data; // point to the first 4 bytes as integer
+
+	// dummy dump sending packets based on t_start
+	for (unsigned int i = 0; i < CurrDumpArguments.t_start; i++) {
+		*dump_index = i;
+		AssembleAndSendPacket(data, MAX_COMMAND_DATA_LENGTH, dump_type, 0, CurrDumpArguments.cmd.ID);
+	}
+	DumpRunning = FALSE;
+}
+
+int StartDump(dump_arguments_t *arguments) {
+	xTaskHandle taskDumpHandle;
+	memcpy(&CurrDumpArguments, arguments, sizeof(dump_arguments_t));
+	DumpRunning = TRUE;
+	xTaskGenericCreate(taskDump, (const signed char*) "taskDump", 4096, NULL,
+					configMAX_PRIORITIES - 2, &taskDumpHandle, NULL, NULL);
 }
 
 void ResetGroundCommWDT() {
@@ -230,6 +252,7 @@ int getMuteEndTime(time_unix *endTime) {
 }
 
 int SetIdleState(ISIStrxvuIdleState state, time_unix duration) {
+	//TODO: use duration to return to the default state "off" after a while
 	return IsisTrxvu_tcSetIdlestate(0, state);
 }
 
@@ -259,3 +282,4 @@ Boolean CheckForMuteEnd() {
 	getMuteEndTime(&endtime);
 	return unixtime > endtime;
 }
+

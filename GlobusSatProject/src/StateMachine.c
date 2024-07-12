@@ -4,7 +4,6 @@
 
 /* global variables */
 State_t state;
-Boolean lowVoltageFlag = FALSE;
 
 int StateMachine_init() {
 	if(RestoreDefaultThresholdVoltages() != 0) {
@@ -23,13 +22,11 @@ int EnterFullMode() {
 
 int EnterCruiseMode() {
     state = CruiseMode;
-    SetIdleState(trxvu_idle_state_on, 0);
     return 0;
 }
 
 int EnterSafeMode() {
     state = SafeMode;
-    SetIdleState(trxvu_idle_state_off, 0);
     return 0;
 }
 
@@ -38,20 +35,16 @@ int EnterCriticalMode() {
     return 0;
 }
 
-int SetEPS_Channels(channel_t channel);
+//int SetEPS_Channels(channel_t channel);
 
 State_t GetSystemState() {
     return state;
 }
 
-channel_t GetSystemChannelState();
+//channel_t GetSystemChannelState();
 
-Boolean EpsGetLowVoltageFlag() {
-	return lowVoltageFlag;
-}
-
-void EpsSetLowVoltageFlag(Boolean low_volt_flag) {
-	lowVoltageFlag = low_volt_flag;
+Boolean TransmissionAllowedByState() {
+	return (state == FullMode || state == CruiseMode) ? TRUE : FALSE;
 }
 
 int UpdateThresholdVoltages(EpsThreshVolt_t *thresh_volts) {

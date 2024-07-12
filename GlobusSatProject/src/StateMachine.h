@@ -106,9 +106,11 @@ State_t GetSystemState();
  */
 channel_t GetSystemChannelState();
 
-Boolean EpsGetLowVoltageFlag();
-
-void EpsSetLowVoltageFlag(Boolean low_volt_flag);
+/*
+ * Returns a flag saying if transmission is allowed by the current state
+ * @return flag saying if transmission is allowed by the current state
+ */
+Boolean TransmissionAllowedByState();
 
 /*!
  * @brief setting the new EPS logic threshold voltages on the FRAM.

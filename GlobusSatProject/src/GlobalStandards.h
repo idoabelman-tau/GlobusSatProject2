@@ -6,9 +6,9 @@
 #include <at91/utility/exithandler.h>
 #include <hal/errors.h>
 
+#include "TestingConfigurations.h"
 #include "FRAM_FlightParameters.h"
 #include "SysI2CAddr.h"
-#include "TestingConfigurations.h"
 #ifndef NULL
 	#define NULL ((void *)0)
 #endif
