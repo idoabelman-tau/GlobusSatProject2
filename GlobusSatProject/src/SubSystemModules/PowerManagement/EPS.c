@@ -45,7 +45,7 @@ int EPS_Init() {
 	}
 #endif
 #ifdef GOMEPS
-	unsigned char eps_i2c_addr = EPS_I2C_ADDRESS;
+	unsigned char eps_i2c_addr = EPS_I2C_ADDR;
 	EPS_ERR_FLAG = GomEpsInitialize(&eps_i2c_addr, 1);
 	EPS_ERR_FLAG += GomEpsPing(EPS_I2C_BUS_INDEX, eps_i2c_addr, &eps_i2c_addr);
 	if( EPS_ERR_FLAG != E_IS_INITIALIZED && EPS_ERR_FLAG != E_NO_SS_ERR)
@@ -80,7 +80,6 @@ int EPS_Conditioning() {
     if (update_filtered_voltage() != 0) {
         return -1;
     }
-
     return ChangeStateByVoltage(filtered_voltage);
 }
 

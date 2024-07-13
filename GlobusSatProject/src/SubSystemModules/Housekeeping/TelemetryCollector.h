@@ -5,8 +5,9 @@
 #include "TelemetryFiles.h"
 #include "TLM_management.h"
 #include <satellite-subsystems/IsisSolarPanelv2.h>
+#include <satellite-subsystems/isis_ants2.h>
 #include "SubSystemModules/PowerManagement/EPS.h"
-
+#include <satellite-subsystems/GomEPS.h>
 #define NUM_OF_SUBSYSTEMS_SAVE_FUNCTIONS 5
 
 

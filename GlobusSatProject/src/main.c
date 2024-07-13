@@ -68,7 +68,7 @@ void changeFirstActivation(Boolean value){
 }
 
 void test(){
-
+	//TelemetryCollectorLogic();
 
 	time_unix tlm_save_period = DEFAULT_EPS_SAVE_TLM_TIME;
 	FRAM_write((unsigned char*) &tlm_save_period, EPS_SAVE_TLM_PERIOD_ADDR,
@@ -118,10 +118,11 @@ void test(){
 
 void mainloop() {
 	while(TRUE) {
-		EPS_Conditioning();
-		TRX_Logic();
+		//EPS_Conditioning();
+		//TRX_Logic();
+
 		TelemetryCollectorLogic();
-		Maintenance();
+		//Maintenance();
 	}
 }
 
@@ -142,6 +143,7 @@ void taskMain()
 // main operation function. will be called upon software boot.
 int main()
 {
+	int err;
 	xTaskHandle taskMainHandle;
 	printf("***** starting... ****\n");
 	TRACE_CONFIGURE_ISP(DBGU_STANDARD, 2000000, BOARD_MCK);
@@ -151,7 +153,7 @@ int main()
 		WDT_start();
 
 		// create the main operation task of the satellite
-		xTaskGenericCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
+		err = xTaskGenericCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
 				configMAX_PRIORITIES - 2, &taskMainHandle, NULL, NULL);
 		vTaskStartScheduler();
 		exit(0);

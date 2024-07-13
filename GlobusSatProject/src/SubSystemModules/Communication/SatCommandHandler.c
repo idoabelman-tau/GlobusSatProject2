@@ -69,5 +69,5 @@ int ActUponCommand(sat_packet_t *cmd) {
 }
 
 int GetSatId(sat_packet_t *packet) {
-	return (packet->ID && 0xFF); // get the LSB
+	return (packet->ID & 0xFF); // get the LSB
 }

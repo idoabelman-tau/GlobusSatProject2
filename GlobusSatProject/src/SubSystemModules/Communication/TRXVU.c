@@ -110,14 +110,16 @@ int taskDump() {
 		AssembleAndSendPacket(data, MAX_COMMAND_DATA_LENGTH, dump_type, 0, CurrDumpArguments.cmd.ID);
 	}
 	DumpRunning = FALSE;
+	return 0;
 }
 
 int StartDump(dump_arguments_t *arguments) {
 	xTaskHandle taskDumpHandle;
 	memcpy(&CurrDumpArguments, arguments, sizeof(dump_arguments_t));
 	DumpRunning = TRUE;
-	xTaskGenericCreate(taskDump, (const signed char*) "taskDump", 4096, NULL,
+	int err = xTaskGenericCreate(taskDump, (const signed char*) "taskDump", 1024, NULL,
 					configMAX_PRIORITIES - 2, &taskDumpHandle, NULL, NULL);
+	return err;
 }
 
 void ResetGroundCommWDT() {

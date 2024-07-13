@@ -37,8 +37,8 @@ Boolean IsGroundCommunicationWDTKick() {
 void Maintenance() {
 	DeleteOldFiles(MIN_FREE_SPACE);
 
-	if (IsGroundCommunicationWDTKick()) {
+	/*if (IsGroundCommunicationWDTKick()) {
 		restart();
-	}
+	}*/
 }
 
