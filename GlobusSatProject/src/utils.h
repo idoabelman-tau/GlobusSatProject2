@@ -15,6 +15,7 @@
 #define E_NO_COMMAND_FOUND -38 // no command found in buffers
 #define E_INVALID_SAT_ID -39 // satellite ID in command is invalid
 #define E_COMMAND_TYPE_NOT_FOUND -40 // the command type or subtype were not found
+#define E_TIMEOUT -41 // timeout in trying to transmit
 #define E_CANT_TRANSMIT    		-200
 #define E_TOO_EARLY_4_BEACON    -201
 #define E_INVALID_PARAMETERS    -204

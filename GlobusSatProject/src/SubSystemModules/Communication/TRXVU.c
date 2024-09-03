@@ -70,14 +70,23 @@ Boolean CheckTransmissionAllowed() {
 
 int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 	unsigned char packet_length = sizeof(sat_packet_t) - sizeof(packet->data) + packet->length; // only submit the actual data
-	if (CheckTransmissionAllowed()) {
-		int err = IsisTrxvu_tcSendAX25DefClSign(0, (unsigned char *)packet, packet_length, (unsigned char *)avalFrames);
 
-		if(err != E_NO_SS_ERR){
-			printf("error sending packet\n");
-			//TODO: log error
+	if (CheckTransmissionAllowed()) {
+		for (int i = 0; i < 5; i++) {
+			int err = IsisTrxvu_tcSendAX25DefClSign(0, (unsigned char *)packet, packet_length, (unsigned char *)avalFrames);
+
+			if (*avalFrames == 0 || *avalFrames == 255) {
+				vTaskDelay(100 / portTICK_RATE_MS);
+			}
+			else {
+				if(err != E_NO_SS_ERR){
+					printf("error sending packet\n");
+					//TODO: log error
+				}
+				return  err;
+			}
 		}
-		return  err;
+		return E_TIMEOUT;
 	}
 	else {
 		return E_CANT_TRANSMIT;
@@ -95,7 +104,7 @@ int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char 
 	err = TransmitSPLPacket(&packet, NULL);
 	if (err != E_NO_SS_ERR) {
 		// TODO: log error
-		return -1;
+		return err;
 	}
 	return 0;
 }
@@ -103,14 +112,25 @@ int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char 
 int taskDump() {
 	unsigned char data[MAX_COMMAND_DATA_LENGTH] = {0};
 	unsigned int *dump_index = (unsigned int *)data; // point to the first 4 bytes as integer
-
+	int err;
 	// dummy dump sending packets based on t_start
 	for (unsigned int i = 0; i < CurrDumpArguments.t_start; i++) {
 		*dump_index = i;
-		AssembleAndSendPacket(data, MAX_COMMAND_DATA_LENGTH, dump_type, 0, CurrDumpArguments.cmd.ID);
+		err = AssembleAndSendPacket(data, MAX_COMMAND_DATA_LENGTH, dump_type, 0, CurrDumpArguments.cmd.ID);
+		if( err!= 0){
+			//printf("failed to send packet with error code %d\n", err);
+		}
 	}
+
+	unsigned short RxCounter = 0;
+	IsisTrxvu_rcGetFrameCount(0, &RxCounter);
+	while (RxCounter > 0) {
+		vTaskDelay(10 / portTICK_RATE_MS);
+		IsisTrxvu_rcGetFrameCount(0, &RxCounter);
+	}
+
 	DumpRunning = FALSE;
-	return 0;
+	vTaskDelete( NULL );
 }
 
 int StartDump(dump_arguments_t *arguments) {

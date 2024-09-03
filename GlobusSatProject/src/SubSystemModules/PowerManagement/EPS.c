@@ -72,7 +72,10 @@ int update_filtered_voltage() {
     if (GetAlpha(&alpha) != 0) {
     	return -1;
     }
+    //printf("alpha: %f\n", alpha);
+    //printf("vbat: %d\n", vbat);
     filtered_voltage = alpha * vbat + (1-alpha) * filtered_voltage;
+    //printf("filtered_voltage: %d\n", filtered_voltage);
     return 0;
 }
 

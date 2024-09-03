@@ -18,8 +18,9 @@ Boolean DumpTelemetryTest() {
 	time_unix start_time = Time_convertTimeToEpoch(&time);
 	time_unix curr_time = start_time;
 	unsigned int cycles = 0;
-	while (curr_time - start_time < 30) { // run with no dump for 5 minutes
+	while (curr_time - start_time < 60) { // run with no dump for 5 minutes
 		EPS_Conditioning();
+		//printf("state: %d\n", GetSystemState());
 		TRX_Logic();
 		TelemetryCollectorLogic();
 		Maintenance();
@@ -36,23 +37,24 @@ Boolean DumpTelemetryTest() {
 	PrintTime(time);
 	time_unix start_dump_time = curr_time;
 	dump_arguments_t args = {0};
-	args.t_start = 200;
+	args.t_start = 500;
 	SetIdleState(trxvu_idle_state_on, 0);
-	//StartDump(&args);
+	StartDump(&args);
 	unsigned char data[MAX_COMMAND_DATA_LENGTH] = {0};
 	unsigned int *dump_index = (unsigned int *)data; // point to the first 4 bytes as integer
+	cycles = 0;
 
 	// dummy dump sending packets based on t_start
 	//printf("entering loop during dump time: ");
-	for (unsigned int i = 0; i < args.t_start; i++) {
+	while (DumpRunning) {
 		//printf("cycles while dump is running: %d\r\n", i);
 		EPS_Conditioning();
+		//printf("state: %d\n", GetSystemState());
 		TRX_Logic();
 		TelemetryCollectorLogic();
 		Maintenance();
 
-		*dump_index = i;
-		AssembleAndSendPacket(data, MAX_COMMAND_DATA_LENGTH, dump_type, 0, args.cmd.ID);
+		cycles++;
 	}
 
 	SetIdleState(trxvu_idle_state_off, 0);
@@ -61,12 +63,12 @@ Boolean DumpTelemetryTest() {
 	printf("End dump time: ");
 	PrintTime(time);
 	curr_time = Time_convertTimeToEpoch(&time);
-	printf("Num cycles with dump: %d\n", args.t_start);
-	printf("Average cycle length with dump: %f\n", (double)(curr_time - start_dump_time) / (double)args.t_start);
+	printf("Num cycles with dump: %d\n", cycles);
+	printf("Average cycle length with dump: %f\n", (double)(curr_time - start_dump_time) / (double)cycles);
 
 	time_unix start_final_loop_time = curr_time;
 	cycles = 0;
-	while (curr_time - start_final_loop_time < 30) { // run with no dump for 5 minutes
+	while (curr_time - start_final_loop_time < 10) { // run with no dump for 5 minutes
 		EPS_Conditioning();
 		TRX_Logic();
 		TelemetryCollectorLogic();
