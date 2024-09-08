@@ -31,7 +31,7 @@ int Time_get_stub(Time* t){
 		return Time_get(t);
 	}
 	else {
-		unsigned int offset = rand()%40 + 3;
+		unsigned int offset = 300;
 		Time_convertEpochToTime(Time_convertTimeToEpoch(&ref) + offset, &ref);
 		*t =ref;
 		return 0;

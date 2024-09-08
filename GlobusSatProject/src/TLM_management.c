@@ -266,6 +266,20 @@ F_FILE* f_itruncate(F_FILE* data, char dataName[256],unsigned long cut){
         return hold;
     }
 }
+
+int sendData(unsigned char * data, int length, time_unix timestamp) {
+#ifdef TESTING
+    printf("data being sent:\n\r");
+    printf("%ld: ", timestamp);
+    hex_print(data, length);
+#endif
+    unsigned char * dataWithTimestamp = malloc(sizeof(time_unix) + length);
+    memcpy(dataWithTimestamp, &timestamp, sizeof(time_unix));
+    memcpy(dataWithTimestamp + sizeof(time_unix), data, length);
+    AddDataToSendBuffer(dataWithTimestamp, sizeof(time_unix) + length);
+    free(dataWithTimestamp);
+    return 0;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /*@brief: initialize the file system. follows the demo and creates todays directory for each of the sub-systems.
 */
@@ -503,9 +517,7 @@ void dumpTlmData(unsigned char* buf ,char dirpath[256] , Time* t, tlm_type_t tlm
                     }
                     while(f_read(&hold,1,sizeof(int) , fp) == sizeof(int)){
                         f_read(buf,1,sizeByTlm[tlm],fp);
-                        printf("data being found:\n\r");
-                        printf("%d: ",hold);
-                        hex_print(buf,sizeByTlm[tlm]);
+                        sendData(buf, sizeByTlm[tlm], Time_convertTimeToEpoch(t) + hold);
                     }
                 }
             }while(!f_findnext(&find));
@@ -717,7 +729,7 @@ int findInterval(unsigned int from , unsigned int to , Time* fromT , Time* toT ,
         err = Time_convertEpochToTime(from,fromT);
     }
 
-    Time_get_wrap(&t);
+    Time_get_wrap(&t); //TODO: remove wrap
     hold_time = Time_convertTimeToEpoch(&t);
     if(hold_time<to){
         err+=Time_convertEpochToTime(hold_time,toT);
@@ -728,7 +740,7 @@ int findInterval(unsigned int from , unsigned int to , Time* fromT , Time* toT ,
     return err;
 
 }
-void dumpFile(F_FILE* data, unsigned int from, unsigned int to , tlm_type_t tlm){
+void dumpFile(F_FILE* data, unsigned int from, unsigned int to , time_unix file_day, tlm_type_t tlm){
     int start_index = searchDataTimeStamp(data,from,tlm), end_index =  searchDataTimeStamp(data,to,tlm);
     unsigned int bufI;
     unsigned char *bufD =(unsigned char*) malloc(DATA_FILE_LINE_SIZE(tlm));
@@ -738,9 +750,7 @@ void dumpFile(F_FILE* data, unsigned int from, unsigned int to , tlm_type_t tlm)
         if(f_read(bufD,1,sizeByTlm[tlm],data) != sizeByTlm[tlm]){
             //TODO: handle failed read.
         }
-        printf("data being found:\n\r");
-        printf("%d: ",bufI);
-        hex_print(bufD,sizeByTlm[tlm]);
+        sendData(bufD, sizeByTlm[tlm], file_day + bufI);
     }
     free(bufD);
 }
@@ -798,7 +808,7 @@ void findData(tlm_type_t tlm, unsigned int from , unsigned int to){
             if(data == NULL){
                 //TODO: file did not open
             }
-            dumpFile(data, secondsInDay(&fromT),secondsInDay(&toT),tlm);
+            dumpFile(data, secondsInDay(&fromT),secondsInDay(&toT), Time_convertTimeToEpoch(&fromT) - secondsInDay(&fromT), tlm);
             f_close(data);
             start_index++;
         }
@@ -815,7 +825,7 @@ void findData(tlm_type_t tlm, unsigned int from , unsigned int to){
            if(data == NULL){
            //TODO: file did not open
            }
-           dumpFile(data,secondsInDay(&fromT),90000,tlm); // all days have less then 90000 seconds meaning search without an upper bound.
+           dumpFile(data,secondsInDay(&fromT),90000, Time_convertTimeToEpoch(&fromT) - secondsInDay(&fromT),tlm); // all days have less then 90000 seconds meaning search without an upper bound.
            f_close(data);
            start_index++;
    }
@@ -842,11 +852,12 @@ void findData(tlm_type_t tlm, unsigned int from , unsigned int to){
         if(data == NULL){
             //TODO: file did not open
         }
-        dumpFile(data, 0 , toT.seconds , tlm);
+        dumpFile(data, 0, toT.seconds, Time_convertTimeToEpoch(&fromT), tlm);
         f_close(data);
         start_index++;
     }
     f_close(fp);
+    SendBuffer();
     return;
 
 }

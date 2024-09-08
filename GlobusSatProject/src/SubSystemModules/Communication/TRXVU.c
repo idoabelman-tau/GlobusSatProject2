@@ -8,6 +8,8 @@
 Boolean TrxMuted = FALSE;
 dump_arguments_t CurrDumpArguments; // global to pass between tasks
 Boolean DumpRunning = FALSE;
+unsigned char sendBuffer[MAX_COMMAND_DATA_LENGTH];
+int dataInSendBuffer = 0;
 
 int InitTrxvu(){
 	//definitions
@@ -304,5 +306,31 @@ Boolean CheckForMuteEnd() {
 	time_unix endtime;
 	getMuteEndTime(&endtime);
 	return unixtime > endtime;
+}
+
+
+int AddDataToSendBuffer(unsigned char* data, int size) {
+	if (dataInSendBuffer + size > MAX_COMMAND_DATA_LENGTH) {
+		SendBuffer();
+	}
+
+	memcpy(sendBuffer + dataInSendBuffer, data, size);
+	dataInSendBuffer += size;
+	return 0;
+}
+
+int SendBuffer() {
+	if (dataInSendBuffer != 0) {
+		int err = AssembleAndSendPacket(sendBuffer, dataInSendBuffer, dump_type, 0, CurrDumpArguments.cmd.ID);
+		if (err != 0) {
+			// TODO: log error
+			dataInSendBuffer = 0;
+			return -1;
+		}
+	}
+
+	dataInSendBuffer = 0;
+
+	return 0;
 }
 

@@ -213,6 +213,11 @@ int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char 
  */
 int SendAckPacket(ack_subtype_t acksubtype, sat_packet_t *cmd, unsigned char *data, unsigned short length);
 
+
+int AddDataToSendBuffer(unsigned char* data, int size);
+
+int SendBuffer();
+
 Boolean DumpRunning;
 
 #endif
