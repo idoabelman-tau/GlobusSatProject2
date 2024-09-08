@@ -22,13 +22,23 @@ Boolean IsGroundCommunicationWDTKick() {
 	}
 
 	Time time;
-	Time_get(&time);
+	Time_get_wrap(&time);
 	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	if (unixtime - last_comm_time > no_comm_wdt_kick_time) {
 		return TRUE;
 	}
 
 	return FALSE;
+}
+
+/*!
+ * @brief reads the current UNIX time and writes it into the FRAM for future reference.
+ */
+void SaveSatTimeInFRAM(unsigned int time_addr, unsigned int time_size) {
+	Time time;
+	Time_get_wrap(&time);
+	time_unix unixtime = Time_convertTimeToEpoch(&time);
+	FRAM_write((unsigned char *)&unixtime, MOST_UPDATED_SAT_TIME_ADDR, MOST_UPDATED_SAT_TIME_SIZE);
 }
 
 /*!

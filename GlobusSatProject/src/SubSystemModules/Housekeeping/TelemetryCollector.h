@@ -8,6 +8,7 @@
 #include <satellite-subsystems/isis_ants2.h>
 #include "SubSystemModules/PowerManagement/EPS.h"
 #include <satellite-subsystems/GomEPS.h>
+#include <freertos/timers.h>
 #define NUM_OF_SUBSYSTEMS_SAVE_FUNCTIONS 5
 
 
@@ -83,6 +84,6 @@ void TelemetrySaveWOD();
  * @brief Gets all necessary telemetry and arranges it into a WOD structure
  * @param[out] output WOD telemetry. If an error occurred while getting TLM the fields will be zero
  */
-void GetCurrentWODTelemetry(WOD_Telemetry_t *wod);
+void GetCurrentWODTelemetry(xTimerHandle pxTimer);
 
 #endif /* TELEMETRYCOLLECTOR_H_ */

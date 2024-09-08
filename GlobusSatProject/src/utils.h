@@ -9,6 +9,7 @@
 #define UTILS_H_
 
 #include "GlobalStandards.h"
+#include <stdlib.h>
 #include <hal/Timing/Time.h>
 
 
@@ -54,6 +55,16 @@ void timeU2time(time_unix utime, Time *time);
  */
 int logError(int error ,char* msg);
 
+#ifdef TESTING
+
+#define Time_get_wrap Time_get_stub
+
+void set_real_time(Boolean value);
+void set_ref(Time t);
+int Time_get_stub(Time* t);
+#else
+#define Time_get_wrap Time_get
+#endif
 
 
 #endif /* UTILS_H_ */

@@ -131,6 +131,7 @@ int taskDump() {
 
 	DumpRunning = FALSE;
 	vTaskDelete( NULL );
+	return 0;
 }
 
 int StartDump(dump_arguments_t *arguments) {
@@ -144,7 +145,7 @@ int StartDump(dump_arguments_t *arguments) {
 
 void ResetGroundCommWDT() {
 	Time time;
-	Time_get(&time);
+	Time_get_wrap(&time);
 	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	FRAM_write((unsigned char*) &unixtime, LAST_COMM_TIME_ADDR, LAST_COMM_TIME_SIZE);
 }
@@ -280,7 +281,7 @@ int SetIdleState(ISIStrxvuIdleState state, time_unix duration) {
 
 int muteTRXVU(time_unix duration) {
 	Time time;
-	Time_get(&time);
+	Time_get_wrap(&time);
 	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	unixtime += duration;
 	int err = setMuteEndTime(&unixtime);
@@ -290,7 +291,7 @@ int muteTRXVU(time_unix duration) {
 
 void UnMuteTRXVU() {
 	Time time;
-	Time_get(&time);
+	Time_get_wrap(&time);
 	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	setMuteEndTime(&unixtime); // set the mute end time to now so that even if we get muted by a bit flip we will automatically unmute
 	TrxMuted = FALSE;
@@ -298,7 +299,7 @@ void UnMuteTRXVU() {
 
 Boolean CheckForMuteEnd() {
 	Time time;
-	Time_get(&time);
+	Time_get_wrap(&time);
 	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	time_unix endtime;
 	getMuteEndTime(&endtime);

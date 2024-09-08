@@ -181,6 +181,18 @@ void print_file(char* c_file_name);
 FileSystemResult c_fileReset(char* c_file_name);
 int FS_test();
 void test_i();
+
+/// simple function by daniel:
+
+void WriteData(tlm_type_t tlm  ,unsigned char* data);
+
+void findData(tlm_type_t tlm, unsigned int from , unsigned int to);
+
+void zeroize();
+
+void hex_print(unsigned char* text , int length);
+
+
 #endif /* TM_MANAGMENT_H_ */
 
 

@@ -60,6 +60,17 @@ int StartTIME(){
         // TODO: log error
         return -1;
     }
+
+    time_unix unixtime;
+	int err = FRAM_read((unsigned char *)&unixtime, MOST_UPDATED_SAT_TIME_ADDR, MOST_UPDATED_SAT_TIME_SIZE);
+	if (err != 0) {
+		printf("failed to read time from RAM");
+		return -1;
+	}
+	if (unixtime > UNIX_SECS_FROM_Y1970_TO_Y2000) {
+		Time_setUnixEpoch(unixtime);
+	}
+
     return 0;
 }
 

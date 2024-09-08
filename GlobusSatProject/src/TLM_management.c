@@ -2,57 +2,273 @@
 #include "hcc/api_fat.h"
 #include "hcc/api_hcc_mem.h"
 #include "hcc/api_mdriver_atmel_mcipdc.h"
-#include "string.h"
-#include "hal/Utility/Util.h"
-#include <stdbool.h>
 
-#define TEST
 
-#define _SD_CARD 0 // used in demo, might not be correct
-
-#define MAX_FILE_SIZE 100
 
 #define NUMBER_OF_LOG_TYPES 14
-#define LOG_FILE_LINE_SIZE sizeof(logElement)
-//#define DATA_FILE_LINE_SIZE 58
-#define DATA_TIME_STAMP_SIZE 5
-#define DATA_SIZE 50
 
-#define DIR_NAME_EPS_TLM "DI/EPS"
-#define DIR_NAME_TX "DI/TX"
-#define DIR_NAME_ANTENNA "DI/ATN"
-#define DIR_NAME_SOLAR_PANELS_TLM "DI/SP"
-#define DIR_NAME_WOD_TLM "DI/WOD"
-#define DIR_NAME_RX "DI/RX"
-#define DIR_NAME_RX_FRAME "DI/RX_FR"
-#define DIR_NAME_LOGS "DI/LOGS"
+#define MAX_FILE_SIZE 100 //TODO: maybe change this into 8*512/(avrage entry size).(about 157 for eps might be optimal)
 
-
-char inDirPath[100];
-char* dirNames[NUMBER_OF_LOG_TYPES] = {DIR_NAME_EPS_TLM,DIR_NAME_TX, DIR_NAME_ANTENNA,
-		DIR_NAME_SOLAR_PANELS_TLM,DIR_NAME_WOD_TLM,"",DIR_NAME_RX,"",DIR_NAME_RX_FRAME,
-		"","","","",DIR_NAME_LOGS};
-
-
-tlm_type_t tlm_global = tlm_eps;
-#define DATA_FILE_LINE_SIZE (sizeByTlm[tlm_global]+ sizeof(int))
-
-
+// used to write log files for easy search of data.
+//fields[0] - number of entries in file
+//fields[1] - name of file
+//fields[2] - sample time first line in file
+//fields[3] - sample time last line in file
 
 typedef union _logElement{
 	int fields[4];
-	char raw[20];
+	unsigned char raw[16];
 } logElement;
 
+#define _SD_CARD 0
+
+// all prefixes of file path names depending on the system being used
+const char* dirNames[NUMBER_OF_LOG_TYPES] = {"DI/EPS","DI/TX", "DI/ATN",
+		"DI/SP","DI/WOD","","DI/RX","","DI/RX_FR",
+		"","","","","DI/LOGS"};
+
+
+// size of file element. for example: the size in bytes of eps telementry (first index in dir_Names) is of length 22.
 const int sizeByTlm[NUMBER_OF_LOG_TYPES+1] = {22,0,0,0,0,0,0,0,0,0,0,0,0,0, sizeof(logElement)};
 
+// each line written to file will include and time stamp (int) and the actual data. correct size of entry is sizeof(timeStamp)+ sizeof(tlementry).
+#define DATA_FILE_LINE_SIZE(tlm) (sizeByTlm[tlm]+ sizeof(int))
+
+///////////////////////////////illustrations///////////////////////////////////
+//directory tree:
+
+/* each sub system has a directory tree that look some what like this:
+
+    sub-system name(directory):                                               DI/EPS
+                                                                            /        \
+                                                                           /          \
+                                                                          /            \
+    year(directory):                                                   2023            2024
+                                                                       /|\             /|\
+                                                                      / | \           / | \
+    month(directory)                                                 1 ... 12        1 ...12
+                                                                       /|\             /|\
+                                                                      / | \           / | \
+                                                                     /  |  \         /  |  \
+    day(directory)                                                  1  ...  30      1  ...  30
+                                                                       /|\             /|\
+                                                                      / | \           / | \
+                                                                     /  |  \         /  |  \
+    files(file, some day has x and another has y files)             1  ...  x       1  ...  y
+
+*/
+
+
+
+///////////////////////////////utility functions///////////////////////////////
+
+/*@param text: text to be printed out
+**@param length: length of text.
+**@effect: prints each charecter of text as two hex chars.
+*/
 void hex_print(unsigned char* text , int length){
 	for(int i = 0 ; i < length ; i++){
 		printf("%02x ",text[i]);
 	}
 	printf("\n\r");
 }
-void WipeDirectory(char* folder);
+
+/*
+*@param[IN] copyFrom. a pointer to a F_FILE structure. elements from this file will be copyed from.
+*@param[IN] copyTO. a pointer to a open F_FILE structure. elements will be copyed into this file.
+*@param[IN] tlm. to calculate entry size.
+*@param[IN] numberOfEntries. the number of elements to copy.
+*/
+void copyFile(F_FILE* copyFrom, F_FILE* copyTo,tlm_type_t tlm, int numberOfEntries){
+    char* buf= malloc(sizeByTlm[tlm]);
+    if(buf == NULL){
+    	printf("failed to allocate memory for file copy- TLM_mamagement -> copyFile\r\n");
+    }
+    long backup1 = f_tell(copyFrom);
+    long backup2 = f_tell(copyTo);
+    if(numberOfEntries != -1){
+        for(int i = 0 ; i < numberOfEntries; i++){
+        	if(f_read(buf,1,sizeByTlm[tlm],copyFrom) == sizeByTlm[tlm]){
+        		f_write(buf,1,sizeByTlm[tlm],copyTo);
+        	}
+        	else{
+        		printf("copy line failed in TLM_management -> copyFile\r\n");
+        	}
+        }
+    }
+    else{
+        while(f_read(buf,1,sizeByTlm[tlm],copyFrom) == sizeByTlm[tlm]){
+        	f_write(buf,1,sizeByTlm[tlm],copyTo);
+        }
+    }
+    f_seek(copyFrom,backup1,F_SEEK_SET);
+    f_seek(copyTo,backup2,F_SEEK_SET);
+    f_flush(copyTo);
+    free(buf);
+}
+//@brief: create directory path to store data files. (today, as returned by time.h)
+void  newDayDir(Time* time){
+
+    char name[256];
+    int i, err = 0, j;
+    char c = '0';
+
+    unsigned char dummy_atter;
+
+    for(i = 0 ; i < NUMBER_OF_LOG_TYPES ; i++){ // for each sub-system
+        if(strcmp("",dirNames[i])){
+            sprintf(name,"%s/%d/%d/%d",dirNames[i],time->year,time->month,time->date); // build name path.
+            if(f_getattr(name,&dummy_atter) == F_NO_ERROR){
+            	continue;
+            }
+
+            for(j = 0 ;c != '\0'; j++){ // search for '\' char
+                c = name[j];
+                if(c == '/'){ // when '\' is found, replace it with null char and build path upto that point.
+                    name[j] = '\0';
+                    err = f_mkdir(name);
+                    if(err != F_NO_ERROR && err !=F_ERR_DUPLICATED){
+                    	printf("found error in new Day_Dir- error: %d\r\n",err);
+                    }
+                    name[j] = c;
+                }
+            }
+            c = '0';
+            err = f_mkdir(name); // build last directory.
+            if(err != F_NO_ERROR && err !=F_ERR_DUPLICATED){
+            	printf("found error in new Day_Dir- error: %d\r\n",err);
+            }
+
+            // open log file of this day.///
+            sprintf(name,"%s/%s",name,"log");
+            F_FILE* hold = f_open(name,"a");
+            if(hold == NULL){
+                //TODO:add to error log
+                printf("failed to open default directory\n");
+            }
+            else{
+            	logElement le;
+
+            	for(int i = 0 ; i < 4 ; i++){
+            		le.fields[i] = 0;
+            	}
+            	f_write(le.raw,sizeof(logElement),1,hold);
+                f_close(hold);
+            }
+        }
+    }
+}
+
+// DI/EPS/2024/4/5
+// DI/EPS/2024/4
+// DI/EPS/2024/4/DI/EPS/2024/4/6
+// F_FIND-> filename = DI/EPS
+void WipeDirectory(char* folder){
+	char cwd[F_MAXPATHNAME];
+	int err = f_getcwd(cwd, F_MAXPATHNAME);
+	if(err !=F_NO_ERROR){
+		return;
+	}
+	err = f_chdir(folder);
+	if(err !=F_NO_ERROR){
+		return;
+	}
+	F_FIND find;
+	if(!f_findfirst("*.*",&find)){
+		if(!strncmp(find.name,".",1)){
+			f_findnext(&find); // skip "."
+			err =f_findnext(&find); // skip ".."
+		}
+		if(err == F_NO_ERROR){
+			do{
+				if(find.attr & F_ATTR_DIR){
+					WipeDirectory(find.name);
+					err = f_rmdir(find.filename);
+				}
+				else {
+					err = f_delete(find.filename);
+				}
+				if(err !=F_NO_ERROR){
+					printf("failed delete with error %d", err);
+				}
+
+			}while(!f_findnext(&find));
+		}
+	}
+	f_chdir(cwd);
+}
+void readlogEntry(F_FILE* log , int index, logElement* le){
+	f_seek(log,index* sizeof(logElement),F_SEEK_SET);
+	if(f_read(le,1,sizeof(logElement),log)!=sizeof(logElement)){
+		//TODO:FAIL
+	}
+}
+void zeroize(){
+	//char folderName[256];
+	/*
+	for(int i = 0 ; i<NUMBER_OF_LOG_TYPES ; i++){
+		if(strcmp(dirNames[i],"") == 0){
+			continue;
+		}
+		sprintf(folderName,"%s",dirNames[i]);
+		WipeDirectory(folderName);
+	}*/
+	WipeDirectory("DI");
+	Time time;
+	Time_get_wrap(&time);
+	newDayDir(&time);
+}
+
+// extract time stamp of entry in data file by line.
+int getTimeFromData(F_FILE* data,tlm_type_t tlm, int line){
+    long backup = f_tell(data);
+    int res;
+    f_seek(data,line*DATA_FILE_LINE_SIZE(tlm),F_SEEK_SET);
+    if(f_read(&res,sizeof(int),1,data) != 1){
+    	res = -1;
+    }
+    f_seek(data,backup,F_SEEK_SET);
+    return res;
+}
+
+
+
+F_FILE* f_itruncate(F_FILE* data, char dataName[256],unsigned long cut){
+    char copyName[256];
+    int c;
+    sprintf(copyName,"%sc",dataName);
+    F_FILE* hold = f_open(copyName,"w");
+    if(hold == NULL){
+        //TODO: handle file not open
+    }
+
+    f_seek(data , cut , F_SEEK_SET);
+    c = f_getc(data);
+    while(c != EOF){
+        if(f_putc(c,hold)){
+        	//TODO: write failed.
+        }
+        c = f_getc(data);
+    }
+
+    f_seek(hold, 0 , F_SEEK_END);
+    f_close(data);
+    f_delete(dataName);
+
+    if(f_tell(hold) == 0){
+    	f_close(hold);
+        f_delete(copyName);
+        return NULL;
+    }
+    else{
+        f_rename(copyName,dataName);
+        f_seek(hold , 0 , F_SEEK_SET);
+        return hold;
+    }
+}
+////////////////////////////////////////////////////////////////////////////////
+/*@brief: initialize the file system. follows the demo and creates todays directory for each of the sub-systems.
+*/
 FileSystemResult InitializeFS(){
     hcc_mem_init();
     unsigned int error = fs_init();
@@ -67,78 +283,50 @@ FileSystemResult InitializeFS(){
     }
 
     error = f_initvolume(0, atmel_mcipdc_initfunc , _SD_CARD);
-    
+
     if(error == F_ERR_NOTFORMATTED){
-       //printf("format error %d found while file system volume initialization\n",error);
+       printf("format error %d found while file system volume initialization\n",error);
         return error;
     }
     else if(error != F_NO_ERROR){
+    	printf(" error %d found while file system volume initialization\n",error);
         return error;
     }
-   int year = 2024;
-   int month = 7;
-   int day = 13;
-   sprintf(inDirPath,"%d/%d/%d",year,month,day);
-   new_Day_Dir();
+   //printf("error %d found while file system volume initialization\n",error);
+    //openAllFiles();
+
+   Time time;
+   Time_get_wrap(&time);
+   newDayDir(&time);
    return error;
 }
+
+
+//@brief: deinitialize the file system. follows the demo.
 void DeInitializeFS(int sd_card){
+
 	return;
 }
 
-void WipeDirectory(char* folder);
-void  new_Day_Dir(){
-    char name[100];
-    int i, err, j;
-    char c = '0';
-    for(i = 0 ; i < NUMBER_OF_LOG_TYPES ; i++){
-        if(strcmp("",dirNames[i])){
-            //c = '!';
-            sprintf(name,"%s/%s",dirNames[i],inDirPath);
-
-            for(j = 0 ;c != '\0'; j++){
-                c = name[j];
-                if(c == '/'){
-                    name[j] = '\0';
-                    err += f_mkdir(name);
-                    name[j] = c;
-                }
-            }
-            c = '0';
-            err += f_mkdir(name);
-            if(err){
-            	printf("found error in new Dayy_Dir- error: %d",err);
-            }
-            WipeDirectory(name);
-            sprintf(name,"%s/%s",name,"log");
-
-            //Log(name);
-            F_FILE* hold = f_open(name,"w");
-
-            if(hold == NULL){
-                //TODO:add to error log
-                printf("failed to open default directory\n");
-            }
-            else{
-            	logElement le;
-            	for(int i = 0 ; i < 4 ; i++){
-            		le.fields[i] = 0;
-            	}
-            	f_write(le.raw,sizeof(logElement),1,hold);
-                f_close(hold);
-            }
-        }
-    }
+int day_seconds(Time *time) {
+    return (time->seconds+60*time->minutes+3600*time->hours)%86400;
 }
 
-void getFileName(char* res , char* sys, int cur_time){
+
+//@ log files are updated when writing into FS. open file, search for latest file (if full, open new) and increase size.
+void giveLogNameForAdd(tlm_type_t tlm,char buf[256] ,Time* time){
 	logElement le;
     F_FILE* handle;
-    char Log[120];
+    unsigned char dummy_attr;
+    sprintf(buf,"%s/%d/%d/%d/LOG",dirNames[tlm],time->year,time->month,time->date);
+    // check if dir exists.
+    if(f_getattr(buf,&dummy_attr) != F_NO_ERROR){
+		newDayDir(time);
+	}
 
-    sprintf(Log,"%s/%s/log",sys,inDirPath);
-    handle = f_open(Log,"r+");
-    if(handle == NULL){
+
+    handle = f_open(buf,"r+");
+    if(handle == NULL){ // TODO: path does not exist error should can newDayDir() to create path.
         //TODO: LOG and Fail
     	printf("failed in finding file in function getFileName\n");
     }
@@ -153,555 +341,668 @@ void getFileName(char* res , char* sys, int cur_time){
     if(le.fields[0] == MAX_FILE_SIZE-1){
     	le.fields[0]=1;
     	le.fields[1]++;
-    	le.fields[2] = cur_time;
-    	le.fields[3] = cur_time;
+    	le.fields[2] = day_seconds(time);
+    	le.fields[3] = day_seconds(time);
         f_seek(handle,0,F_SEEK_END);
         f_write(le.raw,1,sizeof(logElement),handle);
 
     }
-    else{
-
+    else{ //le = {0,0,0,0}
+    	le.fields[2] = (le.fields[0] == 0 ? day_seconds(time): le.fields[2]); // TODO: fix bug in this line
     	le.fields[0]++;
-    	le.fields[2] = (le.fields[2] == 0 ? cur_time: le.fields[2]); // TODO: fix bug in this line
-    	le.fields[3] = cur_time;
+    	le.fields[3] = day_seconds(time);
     	f_seek(handle,-sizeof(logElement),F_SEEK_CUR);
     	f_write(le.raw,1,sizeof(logElement),handle);
     }
+
     f_close(handle);
-    sprintf(res,"%s/%s/%d",sys,inDirPath,le.fields[1]);
+    sprintf(buf,"%s/%d/%d/%d/%d",dirNames[tlm],time->year,time->month,time->date,le.fields[1]);
 }
 
-int day_seconds() {
-	Time time;
-	Time_get(&time);
-    return (time.seconds+60*time.minutes+3600*time.hours)%86400;
-}
 
+
+
+// writing is done by finding the currect log file, updating it and adding the entry to the end of a data file (dataname).
 void WriteData(tlm_type_t tlm  ,unsigned char* data){
-    char filename[120];
-    int time_seconds = day_seconds() ;
-
+    char filename[256];
+    Time time;
+    Time_get_wrap(&time);
+    int time_seconds = day_seconds(&time) ;
 #ifdef TEST
     //printf("time stamp of entered data: %d\n", time_seconds);
 #endif
-    getFileName(filename,dirNames[tlm],time_seconds);
+    giveLogNameForAdd(tlm, filename,&time);
     F_FILE* file_handle = f_open(filename,"a");
     if(file_handle == NULL){
         printf("handle is NULL\n");
     }
     else{
         f_write(&time_seconds,sizeof(int),1 , file_handle);
-        //printf("data being written:\r\n");
-        //hex_print(data,sizeByTlm[tlm_global]);
-        f_write(data,1,sizeByTlm[tlm_global] , file_handle);
-        f_close(file_handle);
-        }
+        f_write(data,1,sizeByTlm[tlm] , file_handle);
+    }
+    f_close(file_handle);
 }
 
-void copyFile(F_FILE* copyFrom, F_FILE* copyTo, int numberOfEntries){
-    char* buf= malloc(sizeByTlm[tlm_global]);
-    if(buf == NULL){
-    	printf("failed to allocate memory for file copy- TLM_mamagement -> copyFile\r\n");
-    }
-    long backup1 = f_tell(copyFrom);
-    long backup2 = f_tell(copyTo);
-    if(numberOfEntries != -1){
-        for(int i = 0 ; i < numberOfEntries; i++){
-        	if(f_read(buf,1,sizeByTlm[tlm_global],copyFrom) == sizeByTlm[tlm_global]){
-        		f_write(buf,1,sizeByTlm[tlm_global],copyTo);
-        	}
-        	else{
-        		printf("copy line failed in TLM_management -> copyFile\r\n");
-        	}
+
+// deletes *min bytes or the entire directory in *min is large enough. minimum delete is one day.
+void deleteFilesBySize(char* path,long* min){
+	int err;
+	F_FIND find;
+	if(!f_findfirst(path,&find)){
+		if(!strncmp(find.name,".",1)){
+			f_findnext(&find); // skip "."
+			err =f_findnext(&find); // skip ".."
+		}
+		if(err == F_NO_ERROR){
+			do{
+				if(find.attr == F_ATTR_DIR){ // is dir, TODO: check assumption that first dir is oldest
+					deleteFilesBySize(find.filename,min);
+                    f_delete(find.filename); // this function fails if directory is not empty
+					if(*min <= 0){
+						break;
+					}
+				}
+				else{ // is file
+					*min -= find.filesize*sizeof(char);
+					f_delete(find.filename);
+				}
+			}
+			while(!f_findnext(&find));
+		}
+	}
+}
+
+void deleteBySize(tlm_type_t tlm,long* min){
+	char root[256];
+	sprintf(root,"%s/.",dirNames[tlm]);
+	deleteFilesBySize(root,min);
+}
+
+void fs_zeroize(){
+
+}
+
+
+char getNameOfFirstDir(char* path){
+    F_FIND find;
+	if(!f_findfirst(path,&find)){
+		if(!strncmp(find.name,".",1)){
+			f_findnext(&find); // skip "."
+			f_findnext(&find); // skip ".."
+		}
+        if(find.attr == F_ATTR_DIR){
+            return atoi(find.name);
         }
+    }
+    return 0xff;
+}
+
+int calculateSecondsOfYear(Time* t) {
+	int daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	if (Time_isLeapYear(t->year)) {
+		daysInMonth[1]++;
+	}
+
+	int seconds = 0;
+	for (int i = 0; i < t->month - 1; i++) {
+		seconds += daysInMonth[i] * 86400;
+	}
+	seconds += (t->date - 1) * 86400;
+	seconds += t->hours * 3600;
+	seconds += t->minutes * 60;
+	seconds += t->seconds;
+	return seconds;
+}
+
+int getTimeOldest(tlm_type_t tlm , Time* t){
+    char path[256];
+    sprintf(path,"%s/*.*",dirNames[tlm]);
+    t->year = getNameOfFirstDir(path);
+    sprintf(path,"%s/%d/*.*",dirNames[tlm],t->year);
+    t->month = getNameOfFirstDir(path);
+    sprintf(path,"%s/%d/%d/*.*",dirNames[tlm],t->year,t->month);
+    t->date = getNameOfFirstDir(path);
+    t->hours = 0;
+    t->minutes = 0;
+    t->seconds = 0;
+    t->day = 1;
+    t->secondsOfYear = calculateSecondsOfYear(t);
+    return (t->year == 0xff || t->month == 0xff || t->date == 0xff); // returns 0 if name is reliable else 1.
+}
+
+
+void dumpTlmData(unsigned char* buf ,char dirpath[256] , Time* t, tlm_type_t tlm){
+	int err = 0 , hold;
+	F_FIND find;
+	F_FILE* fp;
+    char path[256];
+    if(t != NULL){
+        sprintf(path,"%s/%d/%d/%d",dirpath,t->year,t->month,t->date);
     }
     else{
-        while(f_read(buf,1,sizeByTlm[tlm_global],copyFrom) == sizeByTlm[tlm_global]){
-        	f_write(buf,1,sizeByTlm[tlm_global],copyTo);
+        sprintf(path,"%s",dirpath);
+    }
+
+	if(!f_findfirst(path,&find)){
+		if(!strncmp(find.name,".",1)){
+			f_findnext(&find); // skip "."
+			err =f_findnext(&find); // skip ".."
+		}
+        if(find.attr == F_ATTR_DIR){
+            dumpTlmData(buf,find.filename,NULL,tlm);
+        }
+        else{
+            do{
+            if(!strncmp(find.name,"l",1)){
+                    if(!f_findnext(&find)){
+                        break;
+                    }
+                    fp = f_open(find.filename,"r");
+                    if(fp == NULL){
+                        //TODO: fail;
+                    }
+                    while(f_read(&hold,1,sizeof(int) , fp) == sizeof(int)){
+                        f_read(buf,1,sizeByTlm[tlm],fp);
+                        printf("data being found:\n\r");
+                        printf("%d: ",hold);
+                        hex_print(buf,sizeByTlm[tlm]);
+                    }
+                }
+            }while(!f_findnext(&find));
         }
     }
-    f_seek(copyFrom,backup1,F_SEEK_SET);
-    f_seek(copyTo,backup2,F_SEEK_SET);
-    f_flush(copyTo);
-    free(buf);
 }
 
-// data file functions ////////////
-// reads time stamp of data file, returns time if positive and -1 on fail.
-int get_Time_From_Data(F_FILE* data, int line){
-    long backup = f_tell(data);
-    int res;
-    f_seek(data,line*DATA_FILE_LINE_SIZE,F_SEEK_SET);
-    if(f_read(&res,sizeof(int),1,data) != 1){
-    	res = -1;
+
+void dumpAllTlmData(){
+	unsigned char buf[50] ;
+	char name[256];
+    for(int i = 0 ; i < NUMBER_OF_LOG_TYPES ; i++){
+        sprintf(name,"%s", dirNames[i]);
+        if(strncmp(name,"",1)){ ///TODO: check strncmp = 0 when equel.
+            continue;
+        }
+        dumpTlmData(buf,name,NULL,i);
     }
-    f_seek(data,backup,F_SEEK_SET);
-    return res;
+
+
 }
-//returns number of entries still remaining
-int copy_Data_Prefix(F_FILE* doc,F_FILE* copyTo, int upToBound){
-     int cnt = 0;
-     int timeStamp = 0;
-     for(int i = 0 ; i < MAX_FILE_SIZE;i++){
-    	 timeStamp = get_Time_From_Data(doc,i);
-    	 if(timeStamp!=-1 && timeStamp<upToBound){
-    		 cnt++;
-    	 }
-    	 else{
-    		 break;
-    	 }
+
+
+// if timestamp falls between intervals say [2,6] and [9,14], [2,6] will be returned.
+// if timestamp is further from max stamp in log the return numberofelement. also if stamp is prior to log return -1;
+// return -2 if read failed;
+int searchFileInLog(F_FILE* fp , int timestamp){
+    f_seek(fp,0,F_SEEK_END);
+    int h = f_tell(fp)/sizeof(logElement)-1;
+    int l =0 , m = h;
+    logElement le;
+
+    f_seek(fp,m*(sizeof(logElement)),F_SEEK_SET);
+    if(f_read(&le,1,sizeof(logElement),fp) != sizeof(logElement)){
+        printf("failed to read log: searchFileInLog (0)");
+        return -2;
+        };
+    if(le.fields[3] <= timestamp){
+        return h;
+    }
+
+    m=0;
+    f_seek(fp,m*sizeof(logElement),F_SEEK_SET);
+    if(f_read(&le,1,sizeof(logElement),fp) !=sizeof(logElement)){
+        printf("failed to read log: searchFileInLog (1)");
+        return -2;
      }
-
-    if(cnt!=0){
-        f_rewind(doc);
-        copyFile(doc,copyTo,cnt);
+    if(timestamp <= le.fields[2]){
+        return -1;
     }
-    return cnt;
-}
-//returns number of entries still remaining
-int copy_Data_Suffix(F_FILE* doc, F_FILE* copyTo ,int fromBound){
-    int cnt = 0, timeStamp = 0,i;
-    for(i = 0 ; i < MAX_FILE_SIZE;i++){
-        timeStamp = get_Time_From_Data(doc,i);
-        if(timeStamp!=-1){
-        	if(fromBound < timeStamp){
-        		cnt++;
-        		break;
-        	}
+    while(l+1<h){
+        m = (h+l)/2;
+        f_seek(fp,m*sizeof(logElement),F_SEEK_SET);
+        if(f_read(&le,1,sizeof(logElement),fp) != sizeof(logElement)){
+            printf("failed to read log: searchFileInLog (2)");
+            return -2;
+        }
+        if(le.fields[2] <= timestamp && timestamp <= le.fields[3]){
+            return m;
+        }
+        else if(le.fields[3] < timestamp){
+            l = m;
         }
         else{
-        	break;
-        	 }
-         }
-
-    if(cnt){
-        f_seek(copyTo,0,F_SEEK_END);
-        f_seek(doc,i*DATA_FILE_LINE_SIZE,F_SEEK_SET);
-        copyFile(doc,copyTo,-1);
+            h = m;
+        }
     }
-    f_seek(copyTo,0,F_SEEK_END);
-    return f_tell(copyTo)/DATA_FILE_LINE_SIZE;
+    return m == l ? h:l;
 }
 
 
-//////////////////////////////////
-/// Log functions ////////////////////
-void get_log_element(F_FILE* log,logElement* le_P, int line){
-	long backup = f_tell(log);
-	f_seek(log,line*sizeof(logElement),F_SEEK_SET);
-	f_read(le_P,sizeof(logElement),1,log);
-	f_seek(log,backup,F_SEEK_SET);
-	return;
+unsigned int GetDataTimeStamp(F_FILE* data,unsigned int index , tlm_type_t tlm){
+	int res;
+	f_seek(data,index*sizeByTlm[tlm],F_SEEK_SET);
+	if(f_read(&res,1,sizeof(unsigned int),data) != sizeof(unsigned int)){
+		return -1;
+	}
+	return res;
 }
-void update_log_element(F_FILE* log,logElement le, int line){
-	long backup = f_tell(log);
-	f_seek(log,line*sizeof(logElement),F_SEEK_SET);
-	f_write(le.raw,sizeof(logElement),1,log);
-	f_seek(log,backup,F_SEEK_SET);
-	return;
+
+// file must be non-empty
+int searchDataTimeStamp(F_FILE* data,unsigned int search_stamp , tlm_type_t tlm){
+    f_seek(data,0,F_SEEK_END);
+    int h = f_tell(data)/DATA_FILE_LINE_SIZE(tlm)-1;
+    int l =0 , m = h;
+    unsigned int stamp;
+
+    //edge cases...
+    f_seek(data,m*DATA_FILE_LINE_SIZE(tlm),F_SEEK_SET);
+    f_read(&stamp,1,sizeof(int),data);
+    if(stamp <= search_stamp){
+        return h;
+    }
+
+    m=0;
+    f_seek(data,m*DATA_FILE_LINE_SIZE(tlm),F_SEEK_SET);
+    f_read(&stamp,1,sizeof(int),data);
+    if(search_stamp <= stamp){
+        return 0;
+    }
+    ////////////////////////
+    while(l+1 < h){
+        m = (h+l)/2;
+        f_seek(data,m*DATA_FILE_LINE_SIZE(tlm),F_SEEK_SET);
+        f_read(&stamp,1,sizeof(int),data);
+        if(stamp < search_stamp){
+            l = m;
+        }
+        else if(search_stamp< stamp){
+            h = m;
+        }
+        else{
+            return m;
+        }
+    }
+    if( m == l ){
+        return h;
+    }
+    else{
+        return l;
+    }
+}
+
+F_FILE* cutDataByTimeStamp(char* dataname,unsigned int search_stamp , tlm_type_t tlm, Boolean upto){
+	F_FILE* data = f_open(dataname,"r+");
+	if(data == NULL){
+		//TODO:fail correctly
+	}
+	int cutindex = searchDataTimeStamp(data,search_stamp,tlm);
+	if(upto){
+		f_close(data);
+		data = f_truncate(dataname,(unsigned long)cutindex*DATA_FILE_LINE_SIZE(tlm));
+	}
+	else{
+		f_close(data);
+		data = f_itruncate(data,dataname,(unsigned long)cutindex*DATA_FILE_LINE_SIZE(tlm));
+	}
+	return data;
 }
 
 
-int find_file_from_log(F_FILE* log, int numberOfEntries, int time, bool max, bool* inFile){
-    int line = numberOfEntries/2;
-    int lowerBound,upperBound;
+void giveLogOfDir(char* dirpath , F_FILE** fp , char* mode){
+    char logname[256];
+    sprintf(logname,"%s/log",dirpath);
+    *fp = f_open(logname,mode);
+}
+
+
+void giveFileFromLog(char* dirpath , F_FILE* fp , int index, char* data){
     logElement le;
-    *inFile = false;
+    readlogEntry(fp,index,&le);
+    sprintf(data,"%s/%d",dirpath,le.fields[1]);
+}
 
-    for(int i = 1 ; numberOfEntries>>(i-1); i++){
-    	get_log_element(log,&le,line);
-        lowerBound = le.fields[2];
-        upperBound = le.fields[3];
-
-        if(time<lowerBound){
-            if(line == 0){
-                return 0;
-            }
-            get_log_element(log,&le,line-1);
-            upperBound = le.fields[3];
-            if(upperBound<time){
-                if(!max){
-                    return line ;
-                }
-                else{
-                    return line-1;
-                }
-            }
-            line = line - (1 + (numberOfEntries-1)/(2<<i));
-        }
-        else if(upperBound <time){
-            if(line == numberOfEntries-1){
-                return numberOfEntries-1;
-            }
-            get_log_element(log,&le,line+1);
-            lowerBound = le.fields[2];
-            if(time < lowerBound){
-                if(max){
-                    return line;
-                }
-                else{
-                    return line+1;
-                }
-            }
-            line = line + (1 + (numberOfEntries-1)/(2<<i));
-
-        }
-        else{
-            if(!max && time == lowerBound){
-                while( 0 < line){
-                	get_log_element(log,&le,line-1);
-                	upperBound = le.fields[3];
-                    if(time == upperBound){
-                        line--;
-                    }
-                    else{
-                        break;
-                    }
-                }
-
-            }
-            else if(max && time == upperBound){
-                while( line<numberOfEntries-1){
-                	get_log_element(log,&le,line+1);
-                	lowerBound = le.fields[2];
-                    if(time == lowerBound){
-                        line++;
-                    }
-                    else{
-                        break;
-                    }
-                }
-            }
-            break;
-        }
-       }
-
-    *inFile = true;
-    return line;
+void updateTimeToNextDay(Time* t){
+    int remainder;
+    int now = Time_convertTimeToEpoch(t);
+    if(t->seconds != 0 || t->hours != 0){
+        remainder = 86400 -Time_convertTimeToEpoch(t)% 86400;
+    }
+    else{
+        remainder = 86400;
+    }
+    Time_convertEpochToTime(now+remainder , t);
 }
 
 
-
-///////////////////////////////////////////////////////
-void deleteData(tlm_type_t tlm,int timeBound[2]){
-	tlm_global = tlm;
-	char* sys = dirNames[tlm];
-    int numOfLines;
-    int lineBounds[2]; // holds the lines in log where the correct data file names are at.
-    int  cnt = 0, log_update_collector[5];
-    char log_name[125],log_copy_name[125],data_copy_name[125],data_name[125],path[125];
-    bool startSkip = false, endSkip = false;
+void openDataFileByLogIndex(F_FILE* log ,char* dirname , int index ,char* mode, F_FILE** data){
+    char path[F_MAXPATHNAME];
     logElement le;
-
-    sprintf(path,"%s/%s",sys,inDirPath);
-    sprintf(log_name ,"%s/log", path);
-
-    //search in log:
-    F_FILE* data_handle;
-    F_FILE* data_temp;
-    F_FILE* log_temp;
-    F_FILE* log_handle = f_open(log_name,"r+");
-    if(log_handle == NULL){
-        //fail
-        exit(0);
+    f_seek(log , index*sizeof(logElement) , F_SEEK_SET);
+    if(f_read(&le,1,sizeof(logElement),log)!= sizeof(logElement)){
+        //TODO: handle
+        printf("failed to read log: openDataFileByLogInex \n");
     }
-    //size of file
-    f_seek(log_handle, 0L, F_SEEK_END);
-    numOfLines = f_tell(log_handle)/LOG_FILE_LINE_SIZE; // might include bug
-
-    lineBounds[0] = find_file_from_log(log_handle,numOfLines,timeBound[0],false,&startSkip);
-    lineBounds[1] = find_file_from_log(log_handle,numOfLines,timeBound[1],true,&endSkip);
-
-    startSkip = !startSkip;
-    endSkip = !endSkip;
-    if(startSkip){
-        lineBounds[0]--;
-    }
-    if(endSkip){
-        lineBounds[1]++;
-    }
-
-    // start deleting
-
-    if(lineBounds[0]<lineBounds[1]){
-        // update start of log by copying into temp Log file (starting section where entries need to be deleted)
-    	sprintf(data_copy_name,"%s/temp",path);
-        if(!startSkip){
-            //if we need to delete from multiple files.
-            // copy start of first file(res[0]), section that is not being deleted .
-
-        	get_log_element(log_handle,&le,lineBounds[0]);
-
-            sprintf(data_name,"%s/%d",path,le.fields[1]);
-            data_temp = f_open(data_copy_name,"w+");
-            data_handle = f_open(data_name,"r");
-            if(data_handle==NULL){
-                printf("unable to open file 2\n");
-            }
-            if(data_temp==NULL){
-                printf("unable to open file 3\n");
-            }
-            cnt = copy_Data_Prefix(data_handle,data_temp,timeBound[0]);
-
-            log_update_collector[0] = cnt;
-            log_update_collector[1] = get_Time_From_Data(data_handle,0);
-            log_update_collector[4] = lineBounds[0];
-            f_close(data_temp);
-            f_close(data_handle);
-            f_delete(data_name);
-            if(cnt == 0){
-                f_delete(data_copy_name);
-            }
-            else{
-                f_rename(data_copy_name,data_name);
-            }
-
-        }
-            // first file in deletion chain is done.
-
-
-
-        // delete all files between the two edges- lineBounds[0] and lineBounds[1]
-        lineBounds[0]++;
-        while(lineBounds[0] < lineBounds[1]){
-        	get_log_element(log_handle,&le,lineBounds[0]);
-            sprintf(data_name,"%s/%d",path,le.fields[1]);
-            f_delete(data_name);
-            lineBounds[0]++;
-        }
-
-
-
-        // copy end of last file(lineBounds[1]), section that is not being deleted .
-        if(!endSkip){
-
-            get_log_element(log_handle,&le,lineBounds[1]);
-            sprintf(data_name,"%s/%d",path,le.fields[1]);
-            data_temp = f_open(data_copy_name,"w+");
-            data_handle = f_open(data_name,"r");
-            if(data_handle==NULL){
-                printf("unable to open file\n");
-            }
-            if(data_temp==NULL){
-                printf("unable to open file\n");
-            }
-
-
-            cnt = copy_Data_Suffix(data_handle,data_temp,timeBound[1]);
-
-            log_update_collector[2] = cnt;
-            log_update_collector[3] = get_Time_From_Data(data_handle,cnt);
-
-            f_close(data_handle);
-            f_close(data_temp);
-            f_delete(data_name);
-            if(cnt == 0){
-            	f_delete(data_copy_name);
-            }
-            else{
-                f_rename(data_copy_name,data_name);
-            }
-        }
-
-
-        ///////// update log /////////////////
-       tlm_type_t hold = tlm_global;
-       tlm_global = NUMBER_OF_LOG_TYPES;
-       sprintf(log_copy_name,"%s/tempLog",path);
-       log_temp = f_open(log_copy_name,"w");
-       if(log_temp == NULL){
-    	   printf("failed to open temporary log file in deleteData\r\n");
-       	   }
-
-
-
-
-       if(!startSkip){
-    	   f_rewind(log_handle);
-    	   //TODO: fix bug, there exists no global_tlm with size "sizeof(logElement)"
-
-    	   copyFile(log_handle,log_temp,log_update_collector[4]+1);
-
-
-    	   get_log_element(log_handle,&le,log_update_collector[4]);
-    	   le.fields[0] = log_update_collector[0];
-    	   le.fields[2] = log_update_collector[1];
-    	   f_write(le.raw,1,20,log_temp);
-       }
-       if(!endSkip){
-    	   get_log_element(log_handle,&le,lineBounds[1]);
-    	   le.fields[0] = log_update_collector[2];
-    	   le.fields[2] = log_update_collector[3];
-    	   f_write(le.raw,1,20,log_temp);
-
-    	   f_seek(log_handle,lineBounds[1]*LOG_FILE_LINE_SIZE,F_SEEK_SET);
-
-    	   copyFile(log_handle,log_temp,-1);
-       }
-
-       f_seek(log_temp,0,F_SEEK_END);
-       numOfLines = f_tell(log_temp)/LOG_FILE_LINE_SIZE;
-
-       f_close(log_handle);
-       f_close(log_temp);
-
-       if(numOfLines != 0){
-    	   f_delete(log_name);
-    	   f_rename(log_copy_name,log_name);
-       }
-       else{
-    	   f_delete(log_copy_name);
-    	   log_handle = f_open(log_name,"w");
-    	   if(log_handle == NULL){
-    		   printf("log wipe did not work\r\n");
-    	   }
-    	   for(int i = 0 ; i < 4 ; i++){
-    		   le.fields[i] = 0;
-    	   }
-    	   if(f_write(le.raw,1,sizeof(logElement),log_handle) != sizeof(logElement)){
-    		   printf("log default value was not written correctly during wipe\r\n");
-    	   }
-    	   f_close(log_handle);
-       }
-       tlm_global = hold;
-
-   }
-//TODO:stoped here
-
-
-    else if(lineBounds[0] == lineBounds[1]){
-        get_log_element(log_handle,&le,lineBounds[0]);
-        sprintf(data_copy_name,"%s/temp",path);
-        sprintf(data_name,"%s/%d",path,le.fields[1]);
-
-        data_temp = f_open(data_copy_name,"w");
-        data_handle = f_open(data_name,"r");
-        if(data_handle==NULL){
-            printf("unable to open file 2\n");
-        }
-        if(data_temp==NULL){
-            printf("unable to open file 3\n");
-        }
-        cnt = copy_Data_Prefix(data_handle,data_temp,timeBound[0]);
-
-        f_rewind(data_handle);
-        f_rewind(data_temp);
-
-        cnt = copy_Data_Suffix(data_handle,data_temp,timeBound[1]);
-
-
-        if(cnt == 0){
-            f_close(data_handle);
-            f_close(data_temp);
-            f_delete(data_copy_name);
-            f_delete(data_name);
-            sprintf(log_copy_name,"%s/tempLog",path);
-            log_temp = f_open(log_copy_name,"w");
-            if(log_temp == NULL){
-                //TODO: asdfghj
-                printf("(#2)\r\n");
-            }
-            copyFile(log_handle,log_temp,lineBounds[0]);
-            f_seek(log_handle,LOG_FILE_LINE_SIZE,F_SEEK_CUR);
-            copyFile(log_handle,log_temp,-1);
-            if(!(f_tell(log_temp)/LOG_FILE_LINE_SIZE)){
-                for(int i = 0 ; i < 4 ; i++){
-    		        le.fields[i] = 0;
-    	        }
-                f_write(le.raw,1,sizeof(logElement),log_temp);
-            }
-            f_close(log_temp);
-            f_close(log_handle);
-            f_delete(log_name);
-            f_rename(log_copy_name,log_name);
-        }
-        else{
-            le.fields[2]=get_Time_From_Data(data_temp,0);
-            le.fields[3]=get_Time_From_Data(data_temp,cnt);
-            f_close(data_handle);
-            f_close(data_temp);
-            f_delete(data_name);
-            f_rename(data_copy_name,data_name);
-            update_log_element(log_handle,le,lineBounds[0]);
-        }
-
-    }
+    sprintf(path,"%s/%d",dirname,le.fields[1]);
+    *data = f_open(path,mode);
 }
 
+Boolean sameDay(Time* t1, Time* t2){
+    return (t1->month == t2->month && t1->date == t2->date && t1->year == t2->year) ? TRUE:FALSE;
+}
 
+unsigned int EpochTimeOfEndYear(int year){
+    Time t;
+    t.year = year+1;
+    t.month = 1;
+    t.date = 1;
+    t.hours = 1;
+    t.seconds = 0;
+    t.secondsOfYear = 0;
+    return Time_convertTimeToEpoch(&t)-1;
+}
 
+// returns a non zero when error occurs
+int findInterval(unsigned int from , unsigned int to , Time* fromT , Time* toT , tlm_type_t tlm){
+    Time t;
+    getTimeOldest(tlm,&t);
+    unsigned int hold_time;
+    int err;
+    // consider two intervals: [existing minimum time, existing maximum time ] and [from , to]. we would like to search the intersection.
+    // this will ensure that we search only dates that are wanted and existing.
 
-void findData(tlm_type_t tlm, int timeBound[2]){
-	tlm_global = tlm;
-	char* sys = dirNames[tlm];
-    char path[120];
-    char logFile[120];
-    char fileName[125];
-    int numOfLines;
-    int res[2];
-    bool inFile;
-    sprintf(path,"%s/%s",sys,inDirPath);
-    sprintf(logFile ,"%s/log", path);
-
-    //search in log:
-    F_FILE* fp = f_open(logFile,"r");
-    if(fp == NULL){
-        //fail
-        exit(0);
+    hold_time = Time_convertTimeToEpoch(&t);
+    if(from < hold_time){
+        err=Time_convertEpochToTime(hold_time,fromT);
     }
-    //size of file
-    f_seek(fp, 0L, F_SEEK_END);
-    numOfLines = f_tell(fp)/LOG_FILE_LINE_SIZE; // might include bug
+    else{
+        err = Time_convertEpochToTime(from,fromT);
+    }
 
+    Time_get_wrap(&t);
+    hold_time = Time_convertTimeToEpoch(&t);
+    if(hold_time<to){
+        err+=Time_convertEpochToTime(hold_time,toT);
+    }
+    else{
+        err+=Time_convertEpochToTime(to,toT);
+    }
+    return err;
 
+}
+void dumpFile(F_FILE* data, unsigned int from, unsigned int to , tlm_type_t tlm){
+    int start_index = searchDataTimeStamp(data,from,tlm), end_index =  searchDataTimeStamp(data,to,tlm);
+    unsigned int bufI;
+    unsigned char *bufD =(unsigned char*) malloc(DATA_FILE_LINE_SIZE(tlm));
+    f_seek(data,start_index*DATA_FILE_LINE_SIZE(tlm),F_SEEK_SET);
+    for(int i = start_index ; i <= end_index ; i++){
+        f_read(&bufI,1,sizeof(unsigned int) , data);
+        if(f_read(bufD,1,sizeByTlm[tlm],data) != sizeByTlm[tlm]){
+            //TODO: handle failed read.
+        }
+        printf("data being found:\n\r");
+        printf("%d: ",bufI);
+        hex_print(bufD,sizeByTlm[tlm]);
+    }
+    free(bufD);
+}
+void givePathOfTime(tlm_type_t tlm ,Time* t , char* path){
+	sprintf(path,"%s/%d/%d/%d",dirNames[tlm],t->year,t->month,t->date);
+}
+unsigned int secondsInDay(Time* t){
+	return t->seconds + 60*t->minutes +60*60*t->hours;
+}
 
-    res[0] = find_file_from_log(fp,numOfLines,timeBound[0],false,&inFile);
-    if(!inFile){res[0]++;}
-    res[1] = find_file_from_log(fp,numOfLines,timeBound[1],true,&inFile);
-    if(!inFile){res[1]--;}
-/*
-    if(res[0] == -1 || res[1] == numOfLines+1){
-        //log error
-        printf("out of bound\n");
+void findData(tlm_type_t tlm, unsigned int from , unsigned int to){
+
+    Time fromT, toT; // from but if type Time and to but of type Time.
+    F_FILE *fp;
+    char path[256];
+    F_FILE* data;
+    unsigned char buf[50];
+    if(findInterval(from ,to ,&fromT ,&toT,tlm)){
+        //TODO: handle
+        printf("failed to obtain interval: findData\n");
         return;
-    }*/
-
-
-    /////
-    int hold;
-    unsigned char data[100];
-    logElement le;
-    F_FILE* data_handle;
-    get_log_element(fp,&le,res[0]);
-    while(res[0]<=res[1]){
-        sprintf(fileName,"%s/%d",path,le.fields[1]);
-        data_handle = f_open(fileName,"r");
-
-        while(f_read(&hold,1,sizeof(int) , data_handle) ==sizeof(int)){
-
-            if(hold < timeBound[0]){
-            	f_seek(data_handle,sizeByTlm[tlm_global],F_SEEK_CUR);
-                continue;
-            }
-            else if(timeBound[1]< hold){
-                break;
-            }
-            else{
-
-                f_read(&data,1,sizeByTlm[tlm_global],data_handle);
-                printf("data being found:\n\r");
-                printf("%d: ",hold);
-                hex_print(data,sizeByTlm[tlm_global]);
-            }
-        }
-    f_close(data_handle);
-    res[0]++;
-    get_log_element(fp,&le,res[0]);
     }
-    f_rewind(fp);
+	if(Time_diff(&toT ,&fromT) == TIMEDIFF_INVALID){
+		// edge case of to<from. also if years don't match case is handled here.
+		 //TODO: add this case. Timediff return TIMEDIFF_INVALID when years don't match or when fromT<toT.
+		 if(toT.year <= fromT.year){
+			  return; // toT is before fromT, this is an edge case.
+		 }
+	}
+    //start search from Time fromT to time Time toT.
+    givePathOfTime(tlm,&fromT,path);
+    giveLogOfDir(path,&fp, "r");
+    if(fp == NULL){
+        //TODO: file did not open
+    }
+    f_seek(fp,0,F_SEEK_END);
+
+    int loglength = f_tell(fp)/sizeByTlm[NUMBER_OF_LOG_TYPES];
+    int start_index = searchFileInLog(fp,secondsInDay(&fromT));
+    int end_index;
+    if(sameDay(&toT,&fromT)){
+        /*if toT and fromT represent the same day, the data is in one dirrectory.
+        /1) log of this day is an open file in fp at this point.
+        /2) call dumpFile(k,fromT.seconds,toT.seconds),for i <= k <= j.
+        /where i, k ,j are files and  timeStamps(i) <= timeStamps(k) <= timeStamps(j);
+        */
+        end_index = searchFileInLog(fp,secondsInDay(&toT));
+        while(start_index <= end_index){
+
+
+
+        	//openDataFileByLogIndex(F_FILE* log ,char* dirname , int index ,char* mode, F_FILE** data)
+
+        	openDataFileByLogIndex(fp,path,start_index,"r",&data);
+            if(data == NULL){
+                //TODO: file did not open
+            }
+            dumpFile(data, secondsInDay(&fromT),secondsInDay(&toT),tlm);
+            f_close(data);
+            start_index++;
+        }
+        f_close(fp);
+        return;
+    }
+
+    // we cannot assume the start and end are at the same directory.
+    // in this else cse we will print the first day from fromT.seconds onwards, continue to while loop that will dump all days between
+    // fromT to toT and then print from the last directory.
+    while(start_index <loglength){
+
+    	   openDataFileByLogIndex(fp,path,start_index,"r",&data);
+           if(data == NULL){
+           //TODO: file did not open
+           }
+           dumpFile(data,secondsInDay(&fromT),90000,tlm); // all days have less then 90000 seconds meaning search without an upper bound.
+           f_close(data);
+           start_index++;
+   }
+   f_close(fp);
+   updateTimeToNextDay(&fromT);
+
+
+    while(!sameDay(&toT,&fromT)){
+        dumpTlmData(buf,path,&fromT,tlm); // dump entire day.
+        updateTimeToNextDay(&fromT);
+    }
+
+
+    // deal with last day.
+    givePathOfTime(tlm,&fromT,path);
+    giveLogOfDir(path,&fp, "r");
+    if(fp == NULL){
+        //TODO: file did not open
+    }
+    start_index = 0;
+    end_index = searchFileInLog(fp,toT.seconds);
+    while(start_index <= end_index){
+    	openDataFileByLogIndex(fp,path,start_index,"r",&data);
+        if(data == NULL){
+            //TODO: file did not open
+        }
+        dumpFile(data, 0 , toT.seconds , tlm);
+        f_close(data);
+        start_index++;
+    }
     f_close(fp);
-    //writeDataToLog(path,lineBounds,timeBound,log_handle);
+    return;
+
 }
+
+
+
+void updateLogByFiles(F_FILE* fp,F_FILE* data1,int sentry,F_FILE* data2,int eentry,tlm_type_t tlm, char* dirpath){
+	char copyname[256];
+	int size;
+	int holdLocation;
+	unsigned int stamp;
+	logElement le;
+	sprintf(copyname,"%s/logc",dirpath);
+	F_FILE* copy = f_open(copyname,"w");
+	f_rewind(fp);
+	copyFile(fp,copy,14,sentry);
+
+	f_seek(data1,0,F_SEEK_END);
+	size = f_tell(data1)/DATA_FILE_LINE_SIZE(tlm);
+	stamp = GetDataTimeStamp(data1,size-1,tlm);
+	if(stamp == 0xffffffff){
+		//TODO: ERROR
+	}
+
+	f_seek(copy,-sizeof(logElement),F_SEEK_CUR);
+	if(f_read(&le , 1 , sizeof(logElement),copy) != sizeof(logElement)){
+		//TODO: fail
+	}
+	le.fields[0] = size;
+	le.fields[2] = stamp;
+
+	f_seek(copy,-sizeof(logElement),F_SEEK_CUR);
+
+	f_write(&le,1,sizeof(logElement),copy);
+
+
+
+
+	f_seek(fp, eentry*sizeof(logElement),F_SEEK_SET);
+	holdLocation = f_tell(copy)/sizeof(logElement);
+	copyFile(fp,copy,14,-1);
+
+
+	f_seek(copy,(holdLocation)*sizeof(logElement),F_SEEK_SET);
+
+	f_seek(data2,0,F_SEEK_END);
+	size = f_tell(data2)/DATA_FILE_LINE_SIZE(tlm);
+	stamp = GetDataTimeStamp(data2,0,tlm);
+
+
+	if(f_read(&le , 1 , sizeof(logElement),fp) != sizeof(logElement)){
+		//TODO: fail
+	}
+	le.fields[0] = size;
+	le.fields[2] = stamp;
+
+	f_seek(copy,-sizeof(logElement),F_SEEK_CUR);
+	f_write(&le,1,sizeof(logElement),copy);
+}
+void wipeInterval(char* dirpath,F_FILE* fp,int  sentry ,int eentry){
+	logElement le;
+	char deletePath[256];
+	while(sentry <= eentry){
+		readlogEntry(fp,sentry,&le);
+		sprintf(deletePath,"%s/%d",dirpath,le.fields[1]);
+		f_delete(deletePath);
+	}
+}
+
+void deleteAndUpdateLog(unsigned int from , unsigned int to , tlm_type_t tlm , char* dirpath){
+    F_FILE* fp;
+    char dataname1[256] ;
+    char dataname2[256];
+    F_FILE *data1, *data2;
+    giveLogOfDir(dirpath,&fp,"r+");
+    if(fp == NULL){
+        //TODO: handle file not opening
+    }
+    f_seek(fp,0,F_SEEK_END);
+    int sizeOfLog = f_tell(fp)/sizeof(logElement);
+    int sentry = searchFileInLog(fp,from); // start entry in log
+    int eentry = searchFileInLog(fp,to); // end entry in log
+    if(sentry == -1 && eentry == sizeOfLog){
+        WipeDirectory(dirpath);
+    }
+    else{
+        // we need to delete all files upto the eentry'th file in log. then we need to update eentry'th file (and its log entry).
+        wipeInterval(dirpath,fp, sentry , eentry); // delete all files between these inecies.
+        ///////
+
+        if(sentry != -1){
+			giveFileFromLog(dirpath,fp,sentry, dataname1); // give name of first file. needs to be freed after use
+			if(dataname1 == NULL){
+				//TODO: handle
+				printf("did not open data file: deleteAndUpdateLog (0)\n");
+			}
+			data1 = cutDataByTimeStamp(dataname1,from,tlm,FALSE);
+			// this variable holds the entry number in the data file where (to < entry[dataIndex+1] or entry[dataIndex+1] == eof).
+        }
+        if(eentry != sizeOfLog){
+			giveFileFromLog(dirpath,fp,sentry,dataname2);
+			if(dataname2 == NULL){
+				//TODO: handle
+				printf("did not open data file: deleteAndUpdateLog (1)\n");
+			}
+			data2 = cutDataByTimeStamp(dataname2,to,tlm,TRUE);
+        }
+        updateLogByFiles(fp,data1,sentry,data2,eentry,tlm,dirpath);
+        f_close(data1);
+        f_close(data2);
+        // this variable holds the entry number in the data file where (to < entry[dataIndex+1] or entry[dataIndex+1] == eof).
+
+    }
+
+
+
+
+}
+
+
+void deleteData(tlm_type_t tlm , unsigned int from , unsigned int to){
+    // we start with the same algorithm as in findData to find optimal interval.
+
+    Time fromT, toT;
+    char path[256];
+    if(findInterval(from ,to ,&fromT ,&toT,tlm)){
+        //TODO: handle
+        printf("failed to obtain interval: findData\n");
+        return;
+    }
+
+    if(Time_diff(&toT ,&fromT) == TIMEDIFF_INVALID){ // same as before, different years will cuase Timediff to return an error. also toT < fromT.
+    }
+
+    //assuming fromT < toT and they are of the same year.
+
+    if(sameDay(&toT,&fromT)){
+    	givePathOfTime( tlm , &fromT , path);
+        deleteAndUpdateLog(secondsInDay(&fromT),secondsInDay(&toT),tlm,path);
+        return;
+    }
+
+    givePathOfTime( tlm , &fromT , path);
+    deleteAndUpdateLog(secondsInDay(&fromT),90000,tlm,path); //delete from first day directory.
+    updateTimeToNextDay(&fromT);
+    while(Time_diff(&toT ,&fromT) != TIMEDIFF_INVALID){ // delete all directories corresponding to days between start to end.
+    	givePathOfTime( tlm , &fromT , path);
+    	WipeDirectory(path);
+        updateTimeToNextDay(&fromT);
+    }
+    givePathOfTime( tlm , &fromT , path);
+    deleteAndUpdateLog(secondsInDay(&fromT),secondsInDay(&toT),tlm,path); // delete from last day directory.
+
+    return;
+}
+
 
 #ifdef TEST
 
@@ -736,31 +1037,8 @@ void print_sub_system_names() {
         }
     }
 }
-void print_file_contents(char *file_path) {
-    F_FILE *file = f_open(file_path, "r");
-    if (file == NULL) {
-        printf("Error opening the file.\n");
-        return;
-    }
 
-    int c = f_getc(file);
-    while (c != -1) {
-        printf("%c", c);
-    }
 
-    f_close(file);
-}
-
-void leaveLevel(char* path){ // take directory path and return father directory
-    int length = strlen(path)-1;
-    while(0 <= length){
-        if(path[length] == '/'){
-            path[length] = '\0';
-            break;
-        }
-        length--;
-    }
-}
 /**
 #define LOG_NAME "log"
 
@@ -772,25 +1050,7 @@ void Log(char* msg){
     return;
 }*/
 
-void WipeDirectory(char* folder){
-	int err;
-	F_FIND find;
-	char path[100];
-	sprintf(path, "%s/*.*", folder);
-	if(!f_findfirst(path,&find)){
-		if(!strncmp(find.name,".",1)){
-			f_findnext(&find); // skip "."
-			err =f_findnext(&find); // skip ".."
-		}
-		if(err == F_NO_ERROR){
-			do{
-				sprintf(path,"%s/%s",folder,find.name);
-				f_delete(path);
-			        }
-			 while(!f_findnext(&find));
-		}
-	}
-}
+
 
 
 void DisplayDirectory(char* folder){
