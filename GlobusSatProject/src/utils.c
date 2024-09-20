@@ -7,7 +7,6 @@
 
 #include "utils.h"
 
-#ifdef TESTING
 Time ref = UNIX_DATE_JAN_D1_Y2000;
 Boolean realTime = FALSE;
 
@@ -25,6 +24,12 @@ void set_ref(Time t){
 	ref.minutes = t.minutes;
 	ref.secondsOfYear = t.secondsOfYear;
 }
+void set_ref_epoch(unsigned int epoch){
+	Time_convertEpochToTime(epoch, &ref);
+}
+void reset_epoch(){
+	set_ref_epoch(UNIX_SECS_FROM_Y1970_TO_Y2000);
+}
 
 int Time_get_stub(Time* t){
 	if (realTime) {
@@ -37,5 +42,15 @@ int Time_get_stub(Time* t){
 		return 0;
 	}
 }
-#endif
+
+int logError(fileEnum file, int line, int errorNum, char* msg) {
+//#ifdef TESTING
+	printf("file: %d, line: %d, error num: %d, message: %s\n", file, line, errorNum, msg);
+//#endif
+
+	errorElement err = {file, line, errorNum};
+	WriteData(tlm_log,(unsigned char*) &err);
+	return 0;
+
+}
 

@@ -1,7 +1,7 @@
 #ifndef TELEMETRYCOLLECTOR_H_
 #define TELEMETRYCOLLECTOR_H_
 
-#include "GlobalStandards.h"
+#include "utils.h"
 #include "TelemetryFiles.h"
 #include "TLM_management.h"
 #include <satellite-subsystems/IsisSolarPanelv2.h>
@@ -9,6 +9,9 @@
 #include "SubSystemModules/PowerManagement/EPS.h"
 #include <satellite-subsystems/GomEPS.h>
 #include <freertos/timers.h>
+#include <hcc/api_fat.h>
+#include <hal/Drivers/ADC.h>
+#include <satellite-subsystems/IsisAntS.h>
 #define NUM_OF_SUBSYSTEMS_SAVE_FUNCTIONS 5
 
 
@@ -35,8 +38,6 @@ typedef struct __attribute__ ((__packed__)) WOD_Telemetry_t
 } WOD_Telemetry_t;
 
 
-typedef struct solar_tlm { int32_t values[ISIS_SOLAR_PANEL_COUNT]; } solar_tlm_t;
-
 /**
  * get all tlm save time periods from FRAM
  */
@@ -45,10 +46,6 @@ void InitSavePeriodTimes();
 /**
  * set a new periodTime
  */
-int CMD_SetTLMPeriodTimes(sat_packet_t *cmd);
-
-
-int CMD_GetTLMPeriodTimes(sat_packet_t *cmd);
 
 /*!
  * @brief saves all telemetries into the appropriate TLM files
@@ -84,6 +81,6 @@ void TelemetrySaveWOD();
  * @brief Gets all necessary telemetry and arranges it into a WOD structure
  * @param[out] output WOD telemetry. If an error occurred while getting TLM the fields will be zero
  */
-void GetCurrentWODTelemetry(xTimerHandle pxTimer);
+void GetCurrentWODTelemetry(WOD_Telemetry_t *wod);
 
 #endif /* TELEMETRYCOLLECTOR_H_ */

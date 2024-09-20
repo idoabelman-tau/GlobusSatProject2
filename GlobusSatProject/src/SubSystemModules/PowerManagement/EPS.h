@@ -7,12 +7,18 @@
 #ifndef EPS_H_
 #define EPS_H_
 
-#include "GlobalStandards.h"
+// needed here for includes
+#define NUMBER_OF_SOLAR_PANELS			6
+
+#include "utils.h"
 #include "StateMachine.h"
 #include "SubSystemModules/Communication/SatCommandHandler.h"
 #include "TestingDemos/EpsStub.h"
 #include "initSystem.h"
 #include <stdint.h>
+#include <satellite-subsystems/GomEPS.h>
+#include <satellite-subsystems/imepsv2_piu.h>
+#include "TestingDemos/EpsStub.h"
 
 /*
  	 	 	 	  ______
@@ -35,7 +41,6 @@
  */
 #define DEFAULT_ALPHA_VALUE 0.3
 
-#define NUMBER_OF_SOLAR_PANELS			6
 
 typedef union __attribute__ ((__packed__)){
 struct {
@@ -108,12 +113,6 @@ int UpdateAlpha(float alpha);
  */
 int RestoreDefaultAlpha();
 
-int CMDGetHeaterValues(sat_packet_t *cmd);
-
-int CMDSetHeaterValues(sat_packet_t *cmd);
-
-#ifdef TESTING
 voltage_t filtered_voltage;
-#endif
 
 #endif

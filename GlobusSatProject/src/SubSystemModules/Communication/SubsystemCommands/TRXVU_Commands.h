@@ -14,7 +14,6 @@
 
 #define ANTENNA_DEPLOYMENT_TIMEOUT 10 //<! in seconds
 
-
 int CMD_StartDump(sat_packet_t *cmd);
 
 int CMD_SendDumpAbortRequest(sat_packet_t *cmd);

@@ -63,6 +63,7 @@ int ActUponCommand(sat_packet_t *cmd) {
 	}
 	else {
 		SendAckPacket(ACK_ERROR_MSG, cmd, (unsigned char *)&cmd_res, sizeof(char));
+		logError(sat_command_handler, __LINE__, cmd_res, "Error in command resolution");
 	}
 
 	return 0;

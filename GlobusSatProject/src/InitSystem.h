@@ -14,7 +14,7 @@
 #include "SubSystemModules/PowerManagement/EPS.h"
 #include "SubSystemModules/Communication/TRXVU.h"
 #include "GlobalStandards.h"
-#include "TLM_management.h"
+#include "SubSystemModules/Housekeeping/TLM_management.h"
 
 #include <stddef.h>
 #include <freertos/task.h>

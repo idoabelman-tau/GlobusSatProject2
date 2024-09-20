@@ -2,9 +2,6 @@
 #ifndef SATCOMMANDS_H_
 #define SATCOMMANDS_H_
 
-#include "GlobalStandards.h"
-#include "SatCommandHandler.h"
-
 #define MAX_COMMAND_DATA_LENGTH 200 ///< maximum AX25 data field available for downlink
 #define IMG_CHUNK_SIZE 50 //190 // leave room for chunk number and more
 
@@ -15,7 +12,7 @@
 #define YCUBE_SAT_ID	2
 #define ALL_SAT_ID 		0
 
-typedef struct __attribute__ ((__packed__)) sat_packet_t
+typedef struct __attribute__ ((__packed__)) _sat_packet_t
 {
 	unsigned int ID;
 	char cmd_type;
@@ -24,6 +21,9 @@ typedef struct __attribute__ ((__packed__)) sat_packet_t
 	unsigned char data[MAX_COMMAND_DATA_LENGTH];
 
 }sat_packet_t;
+
+// include must be after defining sat_packet_t for silly include order issues
+#include "utils.h"
 
 /*!
  * @brief parses given frame from TRXVU into 'sat_packet_t' structure.

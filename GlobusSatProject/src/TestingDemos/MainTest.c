@@ -37,7 +37,7 @@ Boolean DumpTelemetryTest() {
 	PrintTime(time);
 	time_unix start_dump_time = curr_time;
 	dump_arguments_t args = {0};
-	args.t_start = 500;
+	args.dump_data.t_start = 500;
 	SetIdleState(trxvu_idle_state_on, 0);
 	StartDump(&args);
 	unsigned char data[MAX_COMMAND_DATA_LENGTH] = {0};

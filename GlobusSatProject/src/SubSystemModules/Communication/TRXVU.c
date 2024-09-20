@@ -32,8 +32,19 @@ int InitTrxvu(){
 	TRX_ERR_FLAG = IsisTrxvu_initialize(&TRX_I2C_ADDR_STRUCT,&TRX_FRAME_LENGTH_STRUCT,&TRX_BIT_RATE_STRUCT,1);
 
 	if(TRX_ERR_FLAG != E_NO_SS_ERR && TRX_ERR_FLAG != E_IS_INITIALIZED){
-		//TODO: log error
+		logError(trxvu, __LINE__, TRX_ERR_FLAG, "error initializing TRXVU");
 		return  TRX_ERR_FLAG;
+	}
+
+	ISISantsI2Caddress myAntennaAddress;
+	myAntennaAddress.addressSideA = ANTS_I2C_SIDE_A_ADDR;
+	myAntennaAddress.addressSideB = ANTS_I2C_SIDE_B_ADDR;
+
+	//Initialize the AntS system
+	int ants_err = IsisAntS_initialize(&myAntennaAddress, 1);
+	if(ants_err != E_NO_SS_ERR && ants_err != E_IS_INITIALIZED){
+		logError(trxvu, __LINE__, ants_err, "error initializing ANTS");
+		return  ants_err;
 	}
 
 	return E_NO_SS_ERR;
@@ -57,8 +68,7 @@ int TRX_Logic() {
 		err = ActUponCommand(&cmd);
 	}
 	else if (err != E_NO_COMMAND_FOUND) {
-		// TODO: log error
-		printf("error getting command\n");
+		logError(trxvu, __LINE__, err, "error getting command");
 	}
 
 	BeaconLogic();
@@ -82,8 +92,7 @@ int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 			}
 			else {
 				if(err != E_NO_SS_ERR){
-					printf("error sending packet\n");
-					//TODO: log error
+					logError(trxvu, __LINE__, err, "error sending packet");
 				}
 				return  err;
 			}
@@ -91,6 +100,7 @@ int TransmitSPLPacket(sat_packet_t *packet, int *avalFrames) {
 		return E_TIMEOUT;
 	}
 	else {
+		taskYIELD();
 		return E_CANT_TRANSMIT;
 	}
 }
@@ -99,49 +109,42 @@ int AssembleAndSendPacket(unsigned char *data, unsigned short data_length, char 
 	sat_packet_t packet;
 	int err = AssembleSPLPacket(data, data_length, type, subtype, id, &packet);
 	if (err != E_NO_SS_ERR) {
-		// TODO: log error
-		return -1;
+		logError(trxvu, __LINE__, err, "error assembling packet");
+		return err;
 	}
 
 	err = TransmitSPLPacket(&packet, NULL);
 	if (err != E_NO_SS_ERR) {
-		// TODO: log error
+		logError(trxvu, __LINE__, err, "error transmitting packet");
 		return err;
 	}
 	return 0;
 }
 
-int taskDump() {
-	unsigned char data[MAX_COMMAND_DATA_LENGTH] = {0};
-	unsigned int *dump_index = (unsigned int *)data; // point to the first 4 bytes as integer
-	int err;
-	// dummy dump sending packets based on t_start
-	for (unsigned int i = 0; i < CurrDumpArguments.t_start; i++) {
-		*dump_index = i;
-		err = AssembleAndSendPacket(data, MAX_COMMAND_DATA_LENGTH, dump_type, 0, CurrDumpArguments.cmd.ID);
-		if( err!= 0){
-			//printf("failed to send packet with error code %d\n", err);
+
+
+int taskDump(void * pvParameters) {
+	int err = f_enterFS();
+		if(err != 0){
+			logError(tlm_management, __LINE__, err, "error entering FS");
+			return err;
 		}
-	}
 
-	unsigned short RxCounter = 0;
-	IsisTrxvu_rcGetFrameCount(0, &RxCounter);
-	while (RxCounter > 0) {
-		vTaskDelay(10 / portTICK_RATE_MS);
-		IsisTrxvu_rcGetFrameCount(0, &RxCounter);
-	}
-
+	findData(CurrDumpArguments.dump_data.dump_type,
+				CurrDumpArguments.dump_data.t_start,
+				CurrDumpArguments.dump_data.t_end);
+	f_releaseFS();
 	DumpRunning = FALSE;
 	vTaskDelete( NULL );
 	return 0;
 }
 
 int StartDump(dump_arguments_t *arguments) {
-	xTaskHandle taskDumpHandle;
+	xTaskHandle taskDumpHandle = NULL;
 	memcpy(&CurrDumpArguments, arguments, sizeof(dump_arguments_t));
 	DumpRunning = TRUE;
-	int err = xTaskGenericCreate(taskDump, (const signed char*) "taskDump", 1024, NULL,
-					configMAX_PRIORITIES - 2, &taskDumpHandle, NULL, NULL);
+	int err = xTaskCreate(taskDump, (const signed char*) "taskDump", 4096, NULL,
+					configMAX_PRIORITIES - 2, &taskDumpHandle);
 	return err;
 }
 
@@ -158,7 +161,7 @@ int BeaconLogic() {
 
 	int err = GetBeaconInterval(&interval);
 	if (err != 0) {
-		//TODO: log error
+		logError(trxvu, __LINE__, err, "error getting beacon interval");
 		return err;
 	}
 
@@ -180,8 +183,8 @@ int SendBeacon() {
 
 	int err = AssembleAndSendPacket((unsigned char *)&wod, sizeof(wod), trxvu_cmd_type, BEACON_SUBTYPE, YCUBE_SAT_ID);
 	if (err != 0) {
-		// TODO: log error
-		return -1;
+		logError(trxvu, __LINE__, err, "error sending beacon");
+		return err;
 	}
 
 	return 0;
@@ -203,7 +206,7 @@ int GetOnlineCommand(sat_packet_t *cmd) {
 	{
 		int err = IsisTrxvu_rcGetCommandFrame(0, &rxFrameCmd);
 		if (err != E_NO_SS_ERR) {
-			// TODO: log error
+			logError(trxvu, __LINE__, err, "error getting frame");
 			return err;
 		}
 
@@ -215,7 +218,7 @@ int GetOnlineCommand(sat_packet_t *cmd) {
 
 		err = IsisTrxvu_rcGetFrameCount(0, &RxCounter);
 		if (err != E_NO_SS_ERR) {
-			// TODO: log error
+			logError(trxvu, __LINE__, err, "error getting frame count");
 			return err;
 		}
 
@@ -226,25 +229,29 @@ int GetOnlineCommand(sat_packet_t *cmd) {
 
 int GetBeaconInterval(unsigned int *interval) {
     if (interval == NULL) {
-        return -1;
+		logError(trxvu, __LINE__, E_INPUT_POINTER_NULL, "interval pointer null");
+        return E_INPUT_POINTER_NULL;
     }
 
     int err = FRAM_read((unsigned char*) &interval, BEACON_INTERVAL_TIME_ADDR, BEACON_INTERVAL_TIME_SIZE);
     if (err != 0) {
-        return -1;
+		logError(trxvu, __LINE__, err, "error reading from FRAM");
+        return err;
     }
     return 0;
 }
 
 int SetBeaconInterval(unsigned int *interval) {
     if (*interval < MIN_BEACON_INTERVAL || *interval > MAX_BEACON_INTERVAL) {
-        return -1;
+		logError(trxvu, __LINE__, E_PARAM_OUTOFBOUNDS, "given interval out of bounds");
+        return E_PARAM_OUTOFBOUNDS;
     }
 
     int err = FRAM_write((unsigned char*) interval, BEACON_INTERVAL_TIME_ADDR, BEACON_INTERVAL_TIME_SIZE);
 
     if (err != 0) {
-        return -2;
+		logError(trxvu, __LINE__, err, "error writing to FRAM");
+        return err;
     }
     return 0;
 }
@@ -257,21 +264,31 @@ int RestoreDefaultBeaconInterval() {
 int SendAckPacket(ack_subtype_t acksubtype, sat_packet_t *cmd, unsigned char *data, unsigned short length) {
 	int err = AssembleAndSendPacket(data, length, ack_type, acksubtype, cmd->ID);
 	if (err != 0) {
-		// TODO: log error
-		return -1;
+		logError(trxvu, __LINE__, err, "error sending ACK packet");
+		return err;
 	}
 
 	return 0;
 }
 
-int setMuteEndTime(time_unix *endTime) {
-	int err = FRAM_write((unsigned char*) endTime, MUTE_END_TIME_ADDR, MUTE_END_TIME_SIZE);
+int setMuteEndTime(time_unix endTime) {
+	int err = FRAM_write((unsigned char*) &endTime, MUTE_END_TIME_ADDR, MUTE_END_TIME_SIZE);
+
+	if (err != 0) {
+		logError(trxvu, __LINE__, err, "error setting mute end time");
+		return err;
+	}
 
 	return err;
 }
 
 int getMuteEndTime(time_unix *endTime) {
 	int err = FRAM_read((unsigned char*) endTime, MUTE_END_TIME_ADDR, MUTE_END_TIME_SIZE);
+
+	if (err != 0) {
+		logError(trxvu, __LINE__, err, "error getting mute end time");
+		return err;
+	}
 
 	return err;
 }
@@ -286,7 +303,7 @@ int muteTRXVU(time_unix duration) {
 	Time_get_wrap(&time);
 	time_unix unixtime = Time_convertTimeToEpoch(&time);
 	unixtime += duration;
-	int err = setMuteEndTime(&unixtime);
+	int err = setMuteEndTime(unixtime);
 	TrxMuted = TRUE;
 	return err;
 }
@@ -295,7 +312,7 @@ void UnMuteTRXVU() {
 	Time time;
 	Time_get_wrap(&time);
 	time_unix unixtime = Time_convertTimeToEpoch(&time);
-	setMuteEndTime(&unixtime); // set the mute end time to now so that even if we get muted by a bit flip we will automatically unmute
+	setMuteEndTime(unixtime); // set the mute end time to now so that even if we get muted by a bit flip we will automatically unmute
 	TrxMuted = FALSE;
 }
 
@@ -312,6 +329,7 @@ Boolean CheckForMuteEnd() {
 int AddDataToSendBuffer(unsigned char* data, int size) {
 	if (dataInSendBuffer + size > MAX_COMMAND_DATA_LENGTH) {
 		SendBuffer();
+		dataInSendBuffer = 0; // reset buffer even if sending failed
 	}
 
 	memcpy(sendBuffer + dataInSendBuffer, data, size);
@@ -323,13 +341,11 @@ int SendBuffer() {
 	if (dataInSendBuffer != 0) {
 		int err = AssembleAndSendPacket(sendBuffer, dataInSendBuffer, dump_type, 0, CurrDumpArguments.cmd.ID);
 		if (err != 0) {
-			// TODO: log error
-			dataInSendBuffer = 0;
-			return -1;
+			logError(trxvu, __LINE__, err, "error sending dump buffer");
+			return err;
 		}
+		return -1;
 	}
-
-	dataInSendBuffer = 0;
 
 	return 0;
 }

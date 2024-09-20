@@ -4,7 +4,7 @@
 
 void print_file_contents(char *file_path) {
 	int data_size, time;
-	char buf[50];
+	char buf[250];
 
 	printf("enter size of data bytes\r\n");
 	UTIL_DbguGetIntegerMinMax(&data_size, 0, 90000);
@@ -65,7 +65,10 @@ Boolean explore(){
 	sprintf(show,"DI");
 	printf("starting manual explore\nuse q! to exit\r\n");
 	printf("contents of dir(%s):\r\n",show);
+
+	f_enterFS();
 	DisplayDirectory(show);
+
 	while(1){
 		//UTIL_DbguGetString(msg, 49);
 		scanf("%s",msg);
@@ -80,6 +83,7 @@ Boolean explore(){
 			sprintf(show,"%s/%s",show,msg);
 		}
 		printf("contents of dir(%s)\n",show);
+
 		if(f_getattr(show,&attr) != F_NO_ERROR){
 
 		}
@@ -93,6 +97,7 @@ Boolean explore(){
 		}
 
 	}
+	f_releaseFS();
 	return TRUE;
 }
 
@@ -119,6 +124,16 @@ Boolean TestTelemetryInterval(){
 		printf("enter time stamp To\n\r");
 		UTIL_DbguGetInteger(&bounds[1]);
 		findData(tlm_eps,bounds[0],bounds[1]);
+		return TRUE;
+}
+
+Boolean TestTelemetryDelete(){
+		int bounds[2];
+		printf("enter time stamp From\n\r");
+		UTIL_DbguGetInteger(&bounds[0]);
+		printf("enter time stamp To\n\r");
+		UTIL_DbguGetInteger(&bounds[1]);
+		deleteData(tlm_eps,bounds[0],bounds[1]);
 		return TRUE;
 }
 
@@ -150,6 +165,21 @@ Boolean testWriteStubTime(){
 	}
 	return TRUE;
 }
+Boolean DeleteDays(){
+	int days;
+	printf("please enter the number of old days to delete:\r\n");
+	UTIL_DbguGetIntegerMinMax(&days, 0, 90000);
+	deleteOldDays(tlm_eps,days);
+	return TRUE;
+}
+
+Boolean set_epoch_test(){
+	unsigned int time;
+	printf("please enter time set for stub:\r\n");
+	UTIL_DbguGetInteger(&time);
+	set_ref_epoch(time);
+	return TRUE;
+}
 
 Boolean selectAndExecuteTelemetryTest() {
 	int selection = 0;
@@ -162,7 +192,11 @@ Boolean selectAndExecuteTelemetryTest() {
 	printf("\t 5) explore\n\r");
 	printf("\t 6) Test real-time writes to tlm (EPS)\n\r");
 	printf("\t 7) Test stub-time writes to tlm (EPS)\n\r");
-	printf("\t 8) Go back \n\r");
+	printf("\t 8) delete telemetry data by interval \n\r");
+	printf("\t 9) delete old days \n\r");
+	printf("\t 10) reset stub epoch to 2000 \n\r");
+	printf("\t 11) set stub epoch \n\r");
+	printf("\t 12) Go back \n\r");
 
 	while(UTIL_DbguGetIntegerMinMax(&selection, 1, 20) == 0);
 
@@ -205,6 +239,24 @@ Boolean selectAndExecuteTelemetryTest() {
 			break;
 
 		case 8:
+			if(!TestTelemetryDelete()){
+				printf("explore failed");
+			}
+			break;
+		case 9:
+			if(!DeleteDays()){
+				printf("explore failed");
+			}
+			break;
+		case 10:
+			reset_epoch();
+			break;
+		case 11:
+			if(!set_epoch_test()){
+				printf("time set failed");
+			}
+			break;
+		case 12:
 			return FALSE;
 
 		default:

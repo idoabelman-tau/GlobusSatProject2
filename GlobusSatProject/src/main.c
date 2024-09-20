@@ -16,7 +16,7 @@
 
 #include <hcc/api_fat.h>
 
-#include "GlobalStandards.h"
+#include "utils.h"
 #include "SubSystemModules/PowerManagement/EPS.h"
 #include "SubSystemModules/Communication/TRXVU.h"
 #include "SubSystemModules/Housekeeping/TelemetryCollector.h"
@@ -28,7 +28,6 @@
 
 void listFiels(){
 
-	write2File("test123",tlm_solar);
 
 	F_FIND find;
 	if (!f_findfirst("*.*",&find))
@@ -118,15 +117,13 @@ void test(){
 
 void mainloop() {
 	while(TRUE) {
-		//EPS_Conditioning();
-		//TRX_Logic();
-
-		TelemetryCollectorLogic();
-		//Maintenance();
+		EPS_Conditioning();
+		TRX_Logic();
+		Maintenance();
 	}
 }
 
-void taskMain()
+void taskMain(void * pvParameters)
 {
 	WDT_startWatchdogKickTask(10 / portTICK_RATE_MS, FALSE);
 
@@ -153,8 +150,8 @@ int main()
 		WDT_start();
 
 		// create the main operation task of the satellite
-		err = xTaskGenericCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
-				configMAX_PRIORITIES - 2, &taskMainHandle, NULL, NULL);
+		err = xTaskCreate(taskMain, (const signed char*) "taskMain", 4096, NULL,
+				configMAX_PRIORITIES - 2, &taskMainHandle);
 		vTaskStartScheduler();
 		exit(0);
 

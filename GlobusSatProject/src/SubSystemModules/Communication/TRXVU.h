@@ -24,13 +24,16 @@
 #define MIN_TRXVU_BUFF 5
 #define DEFAULT_RSSI_VALUE 10
 
+typedef struct __attribute__ ((__packed__)) {
+	tlm_type_t dump_type;
+	time_unix t_start;
+	time_unix t_end;
+}dump_data;
+
 typedef struct __attribute__ ((__packed__))
 {
 	sat_packet_t cmd;
-	unsigned char dump_type;
-	time_unix t_start;
-	time_unix t_end; // if passed 0 we use the readTLMFiles function. Otherwise, we use the time range function
-	int resulotion;
+	dump_data dump_data;
 } dump_arguments_t;
 
 typedef enum __attribute__ ((__packed__)) _ISIStrxvuTransponderMode
@@ -153,7 +156,7 @@ int SendBeacon();
  */
 int SetIdleState(ISIStrxvuIdleState state, time_unix duration);
 
-int setMuteEndTime(time_unix *endTime);
+int setMuteEndTime(time_unix endTime);
 
 int getMuteEndTime(time_unix *endTime);
 

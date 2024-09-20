@@ -5,6 +5,9 @@ int trxvu_command_router(sat_packet_t *cmd) {
 		case PING:
 			return CMD_Ping(cmd);
 			break;
+		case DUMP_TIME_RANGE:
+			return CMD_StartDump(cmd);
+			break;
 		default:
 			return E_COMMAND_TYPE_NOT_FOUND;
 	}

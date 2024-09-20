@@ -5,14 +5,6 @@
  * @see		inspect logic flowcharts thoroughly in order to write the code in a clean manner.
  */
 #include "EPS.h"
-#include "utils.h"
-#include "StateMachine.h"
-
-
-#include <satellite-subsystems/GomEPS.h>
-#include <satellite-subsystems/imepsv2_piu.h>
-#include "TestingDemos/EpsStub.h"
-
 
 #define EPS_I2C_ADDRESS 0x20 //TODO: make sure this address (in demo) is hard coded in eps
 
@@ -24,13 +16,13 @@ int EPS_Init() {
 
     // initialize drivers and solar panel
 	int SPI_ERR_FLAG = StartSPI();
-	int EPS_ERR_FLAG;
 	if(SPI_ERR_FLAG != E_NO_SS_ERR){
-		//TODO: add error log
+		logError(eps, __LINE__, SPI_ERR_FLAG, "failed to init SPI");
+
 		return SPI_ERR_FLAG;
 	}
 
-
+	int EPS_ERR_FLAG;
 #ifdef ISISEPS
 	IMEPSV2_PIU_t EPS_INIT_STRUCT;
 	EPS_INIT_STRUCT.i2cAddr = EPS_I2C_ADDRESS;
@@ -40,7 +32,7 @@ int EPS_Init() {
 	if( EPS_ERR_FLAG != driver_error_reinit && EPS_ERR_FLAG != driver_error_none)
 	// re-initialization is not an error
 	{
-		//TODO: add error log
+		logError(eps, __LINE__, EPS_ERR_FLAG, "failed to init EPS");
 		return EPS_ERR_FLAG;
 	}
 #endif
@@ -51,7 +43,7 @@ int EPS_Init() {
 	if( EPS_ERR_FLAG != E_IS_INITIALIZED && EPS_ERR_FLAG != E_NO_SS_ERR)
 	// re-initialization is not an error
 	{
-		//TODO: add error log
+		logError(eps, __LINE__, EPS_ERR_FLAG, "failed to init EPS");
 		return EPS_ERR_FLAG;
 	}
 #endif
@@ -65,23 +57,28 @@ int EPS_Init() {
 
 int update_filtered_voltage() {
     voltage_t vbat = 0;
-    if (GetBatteryVoltage(&vbat) != 0) {
-        return -1;
+    int err = GetBatteryVoltage(&vbat);
+    if (err != 0) {
+    	logError(eps, __LINE__, err, "failed to get battery voltage");
+        return err;
     }
     float alpha;
-    if (GetAlpha(&alpha) != 0) {
-    	return -1;
+    err = GetAlpha(&alpha);
+    if (err != 0) {
+    	logError(eps, __LINE__, err, "failed to get alpha");
+        return err;
     }
-    //printf("alpha: %f\n", alpha);
-    //printf("vbat: %d\n", vbat);
+
     filtered_voltage = alpha * vbat + (1-alpha) * filtered_voltage;
-    //printf("filtered_voltage: %d\n", filtered_voltage);
+
     return 0;
 }
 
 int EPS_Conditioning() {
-    if (update_filtered_voltage() != 0) {
-        return -1;
+	int err = update_filtered_voltage();
+    if (err != 0) {
+    	logError(eps, __LINE__, err, "failed to update filtered voltage");
+        return err;
     }
     return ChangeStateByVoltage(filtered_voltage);
 }
@@ -91,6 +88,7 @@ int GetBatteryVoltage_isis(voltage_t *vbat) {
 
     int error = imepsv2_piu__gethousekeepingeng(0,&response);
     if (error) {
+    	logError(eps, __LINE__, error, "failed to get isis housekeeping data");
         return error;
     }
 
@@ -102,7 +100,7 @@ int GetBatteryVoltage_gom(voltage_t *vbat) {
 	gom_eps_hk_t myEpsTelemetry_hk;
 	int error = GomEpsGetHkData_general(0, &myEpsTelemetry_hk);
 	if (error != E_NO_SS_ERR) {
-		// TODO: log error
+    	logError(eps, __LINE__, error, "failed to get gom housekeeping data");
 		return error;
 	}
 
@@ -112,26 +110,32 @@ int GetBatteryVoltage_gom(voltage_t *vbat) {
 
 int GetAlpha(float *alpha) {
     if (alpha == NULL) {
-        return -1;
+    	logError(eps, __LINE__, E_INPUT_POINTER_NULL, "alpha pointer is null");
+        return E_INPUT_POINTER_NULL;
     }
 
     int err = FRAM_read((unsigned char*) alpha, EPS_ALPHA_FILTER_VALUE_ADDR, EPS_ALPHA_FILTER_VALUE_SIZE);
     if (err != 0) {
-        return -1;
+    	logError(eps, __LINE__, err, "failed to read FRAM");
+
+        return err;
     }
     return 0;
 }
 
 int UpdateAlpha(float new_alpha) {
     if (new_alpha <= 0.0 || new_alpha > 1.0) {
-        return -1;
+    	logError(eps, __LINE__, E_PARAM_OUTOFBOUNDS, "alpha pointer is null");
+        return E_PARAM_OUTOFBOUNDS;
     }
 
     int err = FRAM_write((unsigned char*) &new_alpha, EPS_ALPHA_FILTER_VALUE_ADDR, EPS_ALPHA_FILTER_VALUE_SIZE);
 
     if (err != 0) {
-        return -2;
-    }
+		logError(eps, __LINE__, err, "failed to write FRAM");
+
+		return err;
+	}
     return 0;
 }
 
@@ -144,8 +148,5 @@ int UpdateAlpha(float new_alpha) {
 int RestoreDefaultAlpha() {
     return UpdateAlpha(DEFAULT_ALPHA_VALUE);
 }
-
-int CMDGetHeaterValues(sat_packet_t *cmd);
-
-int CMDSetHeaterValues(sat_packet_t *cmd);
+;
 

@@ -6,10 +6,6 @@
 State_t state;
 
 int StateMachine_init() {
-	if(RestoreDefaultThresholdVoltages() != 0) {
-		return -1;
-	}
-
     state = Startup;
 
     return 0;
@@ -50,7 +46,8 @@ Boolean TransmissionAllowedByState() {
 int UpdateThresholdVoltages(EpsThreshVolt_t *thresh_volts) {
     int error = FRAM_write((unsigned char*) thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
     if (error != 0) {
-        return -1;
+    	logError(state_machine, __LINE__, error, "FRAM write failed");
+        return error;
     }
     return 0;
 }
@@ -63,15 +60,18 @@ int RestoreDefaultThresholdVoltages() {
 int GetThresholdVoltages(EpsThreshVolt_t thresh_volts[NUMBER_OF_THRESHOLD_VOLTAGES]) {
     int error = FRAM_read((unsigned char*) thresh_volts, EPS_THRESH_VOLTAGES_ADDR, EPS_THRESH_VOLTAGES_SIZE);
     if (error != 0) {
-        return -1;
+    	logError(state_machine, __LINE__, error, "FRAM read failed");
+        return error;
     }
     return 0;
 }
 
 int ChangeStateByVoltage(voltage_t voltage) {
 	EpsThreshVolt_t curr_thresh_volts;
-	if (GetThresholdVoltages(&curr_thresh_volts) != 0) {
-		return -1;
+	int err = GetThresholdVoltages(&curr_thresh_volts);
+	if (err != 0) {
+		logError(state_machine, __LINE__, err, "get threshold voltages failed");
+		return err;
 	}
 
     switch (GetSystemState()) {
