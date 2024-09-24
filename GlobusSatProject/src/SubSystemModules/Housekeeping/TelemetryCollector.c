@@ -18,20 +18,11 @@ void GetCurrentWODTelemetry(WOD_Telemetry_t *wod){
 	memset(wod,0,sizeof(*wod));
 	int err = 0;
 
-
-	err = f_enterFS(); // need to enter FS for some filesystem related WOD telemetry
-	if(err != 0){
-		logError(telemetry_collector, __LINE__, err, "error entering FS");
-		return;
-	}
-
 	FN_SPACE space = { 0 };
 	int drivenum = f_getdrive();
 
 	// get the free space of the SD card
 	err = f_getfreespace(drivenum, &space);
-
-	f_releaseFS();
 
 	if (err == F_NO_ERROR){
 		wod->free_memory = space.free;
@@ -133,6 +124,15 @@ void TelemetrySaveEPS(xTimerHandle pxTimer){
 
 	unsigned char * data_out_ptr;
 	int err;
+#ifdef TESTING
+	//printf("start writing EPS telemetry\n");
+#endif
+	err = f_enterFS();
+	if(err != 0){
+		logError(telemetry_collector, __LINE__, err, "error entering FS");
+		f_releaseFS();
+		return;
+	}
 
 #ifdef ISISEPS
     imepsv2_piu__gethousekeepingeng__from_t data_out;
@@ -147,11 +147,15 @@ void TelemetrySaveEPS(xTimerHandle pxTimer){
 
 	if(err < 0){
 		logError(telemetry_collector, __LINE__, err, "error getting eps telemetry");
+		f_releaseFS();
 		return;
 	}
 
 	WriteData(tlm_eps,data_out_ptr);
-
+	f_releaseFS();
+#ifdef TESTING
+	//printf("wrote EPS telemetry\n");
+#endif
 	return;
 }
 
@@ -159,10 +163,16 @@ void TelemetrySaveEPS(xTimerHandle pxTimer){
 void TelemetrySaveTRXVU(xTimerHandle pxTimer){
 	ISIStrxvuTxTelemetry TxTlmStruct;
 	ISIStrxvuRxTelemetry RxTlmStruct;
+	int err = f_enterFS();
+	if(err != 0){
+		logError(telemetry_collector, __LINE__, err, "error entering FS");
+		return;
+	}
 
-	int err = IsisTrxvu_tcGetTelemetryAll(ISIS_TRXVU_I2C_BUS_INDEX, &TxTlmStruct);
+	err = IsisTrxvu_tcGetTelemetryAll(ISIS_TRXVU_I2C_BUS_INDEX, &TxTlmStruct);
 	if(err){
 		logError(telemetry_collector, __LINE__, err, "error getting TX telemetry");
+		f_releaseFS();
 		return;
 	}
 
@@ -171,20 +181,29 @@ void TelemetrySaveTRXVU(xTimerHandle pxTimer){
 	err = IsisTrxvu_rcGetTelemetryAll(ISIS_TRXVU_I2C_BUS_INDEX,&RxTlmStruct);
 	if(err){
 		logError(telemetry_collector, __LINE__, err, "error getting RX telemetry");
+		f_releaseFS();
 		return;
 	}
 
 	WriteData(tlm_rx,RxTlmStruct.raw);
+	f_releaseFS();
 
 }
 
 void TelemetrySaveANT(xTimerHandle pxTimer){
 	ISISantsTelemetry ant_tlmA, ant_tlmB;
 
-	int err = IsisAntS_getAlltelemetry(ISIS_TRXVU_I2C_BUS_INDEX, isisants_sideA,
+	int err = f_enterFS();
+	if(err != 0){
+		logError(telemetry_collector, __LINE__, err, "error entering FS");
+		return;
+	}
+
+	err = IsisAntS_getAlltelemetry(ISIS_TRXVU_I2C_BUS_INDEX, isisants_sideA,
 			&ant_tlmA);
 	if(err){
 		logError(telemetry_collector, __LINE__, err, "error getting antenna telemetry");
+		f_releaseFS();
 		return;
 	}
 	WriteData(tlm_antenna,(unsigned char *) &ant_tlmA);
@@ -193,20 +212,27 @@ void TelemetrySaveANT(xTimerHandle pxTimer){
 			&ant_tlmB);
 	if(err){
 		logError(telemetry_collector, __LINE__, err, "error getting antenna telemetry");
+		f_releaseFS();
 		return;
 	}
 	WriteData(tlm_antenna,(unsigned char *) &ant_tlmB);
-
+	f_releaseFS();
 }
 
 void TelemetrySaveSOLAR(xTimerHandle pxTimer){
 	SolarPack sp[NUMBER_OF_SOLAR_PANELS];
+	int err = f_enterFS();
+	if(err != 0){
+		logError(telemetry_collector, __LINE__, err, "error entering FS");
+		f_releaseFS();
+		return;
+	}
 
 	for(int antNum = 0 ; antNum<NUMBER_OF_SOLAR_PANELS ; antNum++){
 		sp[antNum].parsed.state = IsisSolarPanelv2_getTemperature(ISIS_SOLAR_PANEL_0,&(sp[antNum].parsed.temp),&(sp[antNum].parsed.status));
 	}
 	WriteData(tlm_solar,(unsigned char *) sp);
-
+	f_releaseFS();
 	return;
 
 }
@@ -215,11 +241,16 @@ void TelemetrySaveSOLAR(xTimerHandle pxTimer){
 
 void TelemetrySaveWOD(xTimerHandle pxTimer){
 	WOD_Telemetry_t wod;
+	int err = f_enterFS();
+	if(err != 0){
+		logError(telemetry_collector, __LINE__, err, "error entering FS");
+		return;
+	}
 
 	GetCurrentWODTelemetry(&wod);
 
 	WriteData(tlm_wod, (unsigned char *)&wod);
-
+	f_releaseFS();
 	return;
 }
 
@@ -230,7 +261,7 @@ int updateSaveTime(tlm_type_t tlm, int sec){
 		return err;
 	}
 
-	err = xTimerChangePeriod(timerArray[tlm],MINUTES_TO_TICKS(sec),0);
+	err = xTimerChangePeriod(timerArray[tlm],SECONDS_TO_TICKS(sec),0);
 	if (err == pdFAIL) {
 		logError(telemetry_collector, __LINE__, E_TIMER_UPDATE_FAIL, "failed to update save timer");
 		return E_TIMER_UPDATE_FAIL;
@@ -239,13 +270,13 @@ int updateSaveTime(tlm_type_t tlm, int sec){
 
 }
 
-void TelemetryEnterFS(xTimerHandle pxTimer) {
-	int err = f_enterFS();
-	if(err != 0){
-		logError(tlm_management, __LINE__, err, "error entering FS");
-		return;
-	}
-}
+//void TelemetryEnterFS(xTimerHandle pxTimer) {
+//	int err = f_enterFS();
+//	if(err != 0){
+//		logError(tlm_management, __LINE__, err, "error entering FS");
+//		return;
+//	}
+//}
 
 void TelemetryCollectorLogic(){
 	int sec;
@@ -255,7 +286,7 @@ void TelemetryCollectorLogic(){
 		return;
 	}
 	timerArray[0] = xTimerCreate((const signed char *)"EPS_TIMER",
-					MINUTES_TO_TICKS(sec),
+					SECONDS_TO_TICKS(sec),
 					pdTRUE,
 					(void*) 0,
 					TelemetrySaveEPS);
@@ -266,7 +297,7 @@ void TelemetryCollectorLogic(){
 		return;
 	}
 	timerArray[1] = xTimerCreate((const signed char *)"TRXVU_TIMER",
-					MINUTES_TO_TICKS(sec),
+					SECONDS_TO_TICKS(sec),
 					pdTRUE,
 					(void*) 1,
 					TelemetrySaveTRXVU);
@@ -277,7 +308,7 @@ void TelemetryCollectorLogic(){
 		return;
 	}
 	timerArray[2] = xTimerCreate((const signed char *)"ANT_TIMER",
-					MINUTES_TO_TICKS(sec),
+					SECONDS_TO_TICKS(sec),
 					pdTRUE,
 					(void*) 2,
 					TelemetrySaveANT);
@@ -288,7 +319,7 @@ void TelemetryCollectorLogic(){
 		return;
 	}
 	timerArray[3] = xTimerCreate((const signed char *)"SOLAR_TIMER",
-						MINUTES_TO_TICKS(sec),
+						SECONDS_TO_TICKS(sec),
 						pdTRUE,
 						(void*) 3,
 						TelemetrySaveSOLAR);
@@ -299,7 +330,7 @@ void TelemetryCollectorLogic(){
 		return;
 	}
 	timerArray[4] = xTimerCreate((const signed char *)"WOD_TIMER",
-							MINUTES_TO_TICKS(sec),
+							SECONDS_TO_TICKS(sec),
 							pdTRUE,
 							(void*) 4,
 							TelemetrySaveWOD);
@@ -315,13 +346,13 @@ void TelemetryCollectorLogic(){
 		}
 	}
 
-	xTimerHandle enterTimer = xTimerCreate((const signed char *)"ENTER_TIMER",
-			1,
-			pdFALSE,
-			(void*) 5,
-			TelemetryEnterFS);
-	if(xTimerStart(enterTimer,0) != pdPASS){
-		logError(telemetry_collector, __LINE__, err, "failed to start timer");
-	}
+//	xTimerHandle enterTimer = xTimerCreate((const signed char *)"ENTER_TIMER",
+//			1,
+//			pdFALSE,
+//			(void*) 5,
+//			TelemetryEnterFS);
+//	if(xTimerStart(enterTimer,0) != pdPASS){
+//		logError(telemetry_collector, __LINE__, err, "failed to start timer");
+//	}
 }
 

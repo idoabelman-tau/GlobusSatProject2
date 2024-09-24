@@ -18,11 +18,9 @@ Boolean DumpTelemetryTest() {
 	time_unix start_time = Time_convertTimeToEpoch(&time);
 	time_unix curr_time = start_time;
 	unsigned int cycles = 0;
-	while (curr_time - start_time < 60) { // run with no dump for 5 minutes
+	while (curr_time - start_time < 300) { // run with no dump for 5 minutes
 		EPS_Conditioning();
-		//printf("state: %d\n", GetSystemState());
 		TRX_Logic();
-		TelemetryCollectorLogic();
 		Maintenance();
 
 		Time_get(&time);
@@ -37,7 +35,9 @@ Boolean DumpTelemetryTest() {
 	PrintTime(time);
 	time_unix start_dump_time = curr_time;
 	dump_arguments_t args = {0};
-	args.dump_data.t_start = 500;
+	args.dump_data.dump_type = 0;
+	args.dump_data.t_start = 946771200;
+	args.dump_data.t_end = 947030400;
 	SetIdleState(trxvu_idle_state_on, 0);
 	StartDump(&args);
 	unsigned char data[MAX_COMMAND_DATA_LENGTH] = {0};
@@ -47,11 +47,8 @@ Boolean DumpTelemetryTest() {
 	// dummy dump sending packets based on t_start
 	//printf("entering loop during dump time: ");
 	while (DumpRunning) {
-		//printf("cycles while dump is running: %d\r\n", i);
 		EPS_Conditioning();
-		//printf("state: %d\n", GetSystemState());
 		TRX_Logic();
-		TelemetryCollectorLogic();
 		Maintenance();
 
 		cycles++;
@@ -68,7 +65,7 @@ Boolean DumpTelemetryTest() {
 
 	time_unix start_final_loop_time = curr_time;
 	cycles = 0;
-	while (curr_time - start_final_loop_time < 10) { // run with no dump for 5 minutes
+	while (curr_time - start_final_loop_time < 60) { // run with no dump for 1 minute
 		EPS_Conditioning();
 		TRX_Logic();
 		TelemetryCollectorLogic();

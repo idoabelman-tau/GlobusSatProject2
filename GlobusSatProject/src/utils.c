@@ -45,7 +45,7 @@ int Time_get_stub(Time* t){
 
 int logError(fileEnum file, int line, int errorNum, char* msg) {
 //#ifdef TESTING
-	printf("file: %d, line: %d, error num: %d, message: %s\n", file, line, errorNum, msg);
+	//printf("file: %d, line: %d, error num: %d, message: %s\n", file, line, errorNum, msg);
 //#endif
 
 	errorElement err = {file, line, errorNum};

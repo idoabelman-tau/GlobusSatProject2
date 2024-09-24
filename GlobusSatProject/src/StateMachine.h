@@ -19,7 +19,7 @@
 
 
 #define NUMBER_OF_THRESHOLD_VOLTAGES 	6 		///< first 3 are charging voltages, last 3 are discharging voltages
-#define DEFAULT_EPS_THRESHOLD_VOLTAGES 	{(voltage_t)6500, (voltage_t)7100, (voltage_t)7300,	(voltage_t)6600, (voltage_t)7200, (voltage_t)7400}
+#define DEFAULT_EPS_THRESHOLD_VOLTAGES 	{(voltage_t)6400, (voltage_t)6900, (voltage_t)7300,	(voltage_t)6500, (voltage_t)6800, (voltage_t)7400}
 
 typedef enum{
     Startup,

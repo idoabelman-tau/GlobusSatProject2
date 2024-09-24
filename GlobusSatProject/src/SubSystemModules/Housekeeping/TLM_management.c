@@ -252,9 +252,9 @@ F_FILE* f_itruncate(char dataName[256],unsigned long cut){
 
 int sendData(unsigned char * data, int length, time_unix timestamp) {
 #ifdef TESTING
-    printf("data being sent:\n\r");
-    printf("%ld: ", timestamp);
-    hex_print(data, length);
+    //printf("data being sent:\n\r");
+    //printf("%ld: ", timestamp);
+    //hex_print(data, length);
 #endif
     unsigned char * dataWithTimestamp = malloc(sizeof(time_unix) + length);
     memcpy(dataWithTimestamp, &timestamp, sizeof(time_unix));
@@ -773,6 +773,7 @@ void findData(tlm_type_t tlm, unsigned int from , unsigned int to){
     unsigned char buf[200];
     if(to < from){
     	logError(tlm_management, __LINE__, E_PARAM_OUTOFBOUNDS, "invalid interval");
+    	return;
     }
 
 
@@ -795,7 +796,6 @@ void findData(tlm_type_t tlm, unsigned int from , unsigned int to){
 
     //start search from Time fromT to time Time toT.
 	//f_enterFS();
-
 	while(fp == NULL){
 		if(Time_convertTimeToEpoch(&toT) < Time_convertTimeToEpoch(&fromT)){
 			logError(tlm_management, __LINE__, E_CANT_OPEN_FILE, "failed opening starting Log");
@@ -804,7 +804,9 @@ void findData(tlm_type_t tlm, unsigned int from , unsigned int to){
 		}
 		givePathOfTime(tlm,&fromT,path);
 		giveLogOfDir(path,&fp, "r");
-		updateTimeToNextDay(&fromT);
+		if(fp == NULL){
+			updateTimeToNextDay(&fromT);
+		}
 	}
 
 
